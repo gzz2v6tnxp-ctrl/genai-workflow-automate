@@ -1,0 +1,34 @@
+# ===== Requirements for GenAI Workflow Automation MVP =====
+
+# Web/API
+fastapi                # pour l’API backend
+uvicorn[standard]      # serveur ASGI
+
+# Vector database / retrieval
+qdrant-client>=1.14.2  # client Python pour la base vectorielle Qdrant :contentReference[oaicite:0]{index=0}
+
+# Embeddings / NLP
+sentence-transformers>=2.2.2  # modèles d’embedding efficaces
+transformers>=4.30.0          # pour modèles LLM ou wrapper
+openai                        # pour l’API OpenAI (si usage)
+
+# Pipeline GenAI / workflow
+langchain>=0.0.278            # intégration retrieval + LLM (ex : LangChain)
+langgraph                      # pour la création de graphes d'agents
+langchain_openai               # pour l'intégration avec l'API OpenAI
+
+# Data processing & utilities
+pandas>=1.5.0
+numpy>=1.24.0
+python-dotenv                # gestion des variables d’environnement
+pytest                        # pour les tests unitaires
+
+# UI / Démo
+gradio>=3.14.0                # interface simple pour la démonstration
+
+# Optional / Dev
+black                         # formateur de code (optionnel)
+pre-commit                    # hook de formatage/qualité (optionnel)
+
+# Env management
+python-dotenv
