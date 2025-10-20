@@ -101,16 +101,16 @@ def load_enron_docs(limit: Optional[int] = None) -> List[Document]:
             
     return docs
 
-if __name__ == "__main__":
-    # Ceci est un exemple pour tester le chargement des documents
-    try:
-        documents = load_enron_docs(limit=20)
-        print(f"Nombre de documents Enron chargés : {len(documents)}")
-        if documents:
-            print("\nExemple de premier document chargé :")
-            print("---")
-            print(documents[0].page_content)
-            print("---")
-            print(f"Métadonnées: {documents[0].metadata}")
-    except FileNotFoundError as e:
-        print(e)
+# if __name__ == "__main__":
+#     # Ceci est un exemple pour tester le chargement des documents
+#     try:
+#         documents = load_enron_docs(limit=20)
+#         print(f"Nombre de documents Enron chargés : {len(documents)}")
+#         if documents:
+#             print("\nExemple de premier document chargé :")
+#             print("---")
+#             print(documents[0].page_content)
+#             print("---")
+#             print(f"Métadonnées: {documents[0].metadata}")
+#     except FileNotFoundError as e:
+#         print(e)

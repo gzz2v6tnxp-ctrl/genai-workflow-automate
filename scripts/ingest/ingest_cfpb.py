@@ -20,14 +20,16 @@ def load_cfpb_docs(limit: Optional[int] = None) -> List[Document]:
         raise FileNotFoundError(f"Le fichier de données CFPB n'a pas été trouvé à l'emplacement : {file_path}")
 
     # Utiliser pandas pour une lecture efficace des gros fichiers CSV
-    df = pd.read_csv(file_path, dtype=str, nrows=100)
+    df = pd.read_csv(file_path, dtype=str, nrows=10000)
+
+    print("DF length before dropna:", len(df))
 
     # Filtrer les lignes où la narration de la plainte est manquante
     df.dropna(subset=['Consumer complaint narrative'], inplace=True)
 
     # Appliquer la limite si elle est spécifiée
-    if limit:
-        df = df.head(limit)
+    # if limit:
+    #     df = df.head(limit)
 
     docs = []
     for index, row in df.iterrows():
@@ -58,18 +60,18 @@ def load_cfpb_docs(limit: Optional[int] = None) -> List[Document]:
             
     return docs
 
-if __name__ == "__main__":
-    # Ceci est un exemple pour tester le chargement des documents
-    # On charge seulement 10 documents pour un test rapide
-    try:
-        documents = load_cfpb_docs(limit=10)
-        print(f"Nombre de documents CFPB chargés : {len(documents)}")
-        if documents:
-            print("\nExemple de premier document :")
-            print("---")
-            print(f"Contenu (extrait): {documents[0].page_content[:250]}...")
-            print("---")
-            print(f"Métadonnées: {documents[0].metadata}")
-    except FileNotFoundError as e:
-        print(e)
+# if __name__ == "__main__":
+#     # Ceci est un exemple pour tester le chargement des documents
+#     # On charge seulement 10 documents pour un test rapide
+#     try:
+#         documents = load_cfpb_docs(limit=10)
+#         print(f"Nombre de documents CFPB chargés : {len(documents)}")
+#         if documents:
+#             print("\nExemple de premier document :")
+#             print("---")
+#             print(f"Contenu (extrait): {documents[0].page_content[:250]}...")
+#             print("---")
+#             print(f"Métadonnées: {documents[0].metadata}")
+#     except FileNotFoundError as e:
+#         print(e)
 

@@ -20,6 +20,7 @@ def load_synth_docs() -> List[Document]:
             metadata["id"] = data.get("id")
             metadata["lang"] = data.get("lang")
             metadata["type"] = data.get("type")
+            metadata["source"] = "synth"
             
             # Créer l'objet Document
             doc = Document(page_content=page_content, metadata=metadata)
@@ -27,10 +28,10 @@ def load_synth_docs() -> List[Document]:
             
     return docs
 
-if __name__ == "__main__":
-    # Ceci est un exemple pour tester le chargement des documents
-    documents = load_synth_docs()
-    print(f"Nombre de documents chargés : {len(documents)}")
-    if documents:
-        print("\nExemple de premier document :")
-        print(documents[0])
+# if __name__ == "__main__":
+#     # Ceci est un exemple pour tester le chargement des documents
+#     documents = load_synth_docs()
+#     print(f"Nombre de documents chargés : {len(documents)}")
+#     if documents:
+#         print("\nExemple de premier document :")
+#         print(documents[0])
