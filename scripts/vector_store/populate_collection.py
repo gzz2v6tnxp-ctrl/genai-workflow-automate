@@ -83,6 +83,38 @@ def upsert_data_to_collection(client: QdrantClient, collection_name: str, docume
     print(f"Insertion dans '{collection_name}' terminée.")
 
 
+def run_populate_collections(limit: int = 0):
+    """
+    Point d'entrée principal pour peupler les bases de données vectorielles.
+    """
+    all_documents = load_all_documents(limit_per_source=limit)
+    if not all_documents:
+        print("Aucun document à traiter. Arrêt du script.")
+        return
+
+    synth_documents = [doc for doc in all_documents if doc.metadata.get("source") == "synthetic"]
+
+    try:
+        client = QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_PORT)
+        print(f"\nConnecté à Qdrant sur {config.QDRANT_HOST}:{config.QDRANT_PORT}")
+
+        upsert_data_to_collection(client, PUBLIC_COLLECTION_NAME, synth_documents)
+        upsert_data_to_collection(client, MAIN_KB_COLLECTION_NAME, all_documents)
+
+        print("\n--- Vérification finale du nombre de points ---")
+        public_count = client.count(collection_name=PUBLIC_COLLECTION_NAME, exact=True)
+        main_kb_count = client.count(collection_name=MAIN_KB_COLLECTION_NAME, exact=True)
+        print(f"Collection '{PUBLIC_COLLECTION_NAME}' contient : {public_count.count} points.")
+        print(f"Collection '{MAIN_KB_COLLECTION_NAME}' contient : {main_kb_count.count} points.")
+
+    except Exception as e:
+        print(f"\nUne erreur est survenue lors de l'opération avec Qdrant : {e}")
+
+if __name__ == "__main__":
+    TEST_LIMIT = 200
+    run_populate_collections(limit=TEST_LIMIT)
+
+
 # def main(limit: int = None):
 #     """
 #     Point d'entrée principal pour peupler les bases de données vectorielles.

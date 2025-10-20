@@ -39,6 +39,38 @@ def create_qdrant_collection(
         print(f"Une erreur est survenue lors de la création de la collection : {e}")
         raise
 
+def run_build_collections():
+    """
+    Point d'entrée pour créer les collections Qdrant.
+    """
+    print("--- Démarrage du script de création de collection Qdrant ---")
+    
+    PUBLIC_COLLECTION_NAME = "demo_public"
+    MAIN_KB_COLLECTION_NAME = "knowledge_base_main"
+
+    try:
+        qdrant_client = QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_PORT)
+        print(f"Connecté au client Qdrant à l'adresse {config.QDRANT_HOST}:{config.QDRANT_PORT}")
+
+        create_qdrant_collection(
+            client=qdrant_client,
+            collection_name=PUBLIC_COLLECTION_NAME,
+            vector_dim=config.VECTOR_DIMENSION,
+        )
+
+        create_qdrant_collection(
+            client=qdrant_client,
+            collection_name=MAIN_KB_COLLECTION_NAME,
+            vector_dim=config.VECTOR_DIMENSION,
+        )
+
+        print("\nOpération terminée avec succès. Les deux collections ont été créées.")
+
+    except Exception as e:
+        print(f"\nLe script a échoué. Erreur détaillée : {e}")
+
+if __name__ == "__main__":
+    run_build_collections()
 
 # if __name__ == "__main__":
 #     """
