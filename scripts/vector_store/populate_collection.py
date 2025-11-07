@@ -15,6 +15,7 @@ from scripts.embed import generate_embeddings
 from scripts.ingest.ingest_synth import load_synth_docs
 from scripts.ingest.ingest_cfpb import load_cfpb_docs
 from scripts.ingest.ingest_enron_mail import load_enron_docs
+from scripts.chunking import chunk_documents
 
 # --- Noms des Collections ---
 PUBLIC_COLLECTION_NAME = "demo_public"
@@ -22,20 +23,29 @@ MAIN_KB_COLLECTION_NAME = "knowledge_base_main"
 
 
 def load_all_documents(limit_per_source: int = None) -> List[Document]:
-    """Charge les documents de toutes les sources configurées."""
+    """Charge et découpe intelligemment les documents."""
     all_docs = []
     print("--- Chargement des documents depuis toutes les sources ---")
 
+    # Synth : généralement courts, mais on applique quand même le chunking au cas où
     print("Source: synth...")
-    all_docs.extend(load_synth_docs())
+    synth_docs = load_synth_docs()
+    synth_chunked = chunk_documents(synth_docs, chunk_size=600)
+    all_docs.extend(synth_chunked)
 
+    # CFPB : plaintes souvent longues, chunking nécessaire
     print("Source: cfpb...")
-    all_docs.extend(load_cfpb_docs(limit=limit_per_source))
+    cfpb_docs = load_cfpb_docs(limit=limit_per_source)
+    cfpb_chunked = chunk_documents(cfpb_docs, chunk_size=600)
+    all_docs.extend(cfpb_chunked)
 
+    # Enron : emails de longueurs variables, chunking pour les longs threads
     print("Source: enron...")
-    all_docs.extend(load_enron_docs(limit=limit_per_source))
+    enron_docs = load_enron_docs(limit=limit_per_source)
+    enron_chunked = chunk_documents(enron_docs, chunk_size=600)
+    all_docs.extend(enron_chunked)
 
-    print(f"Total de {len(all_docs)} documents chargés.")
+    print(f"\n✅ Total de {len(all_docs)} chunks prêts pour embedding.")
     return all_docs
 
 
@@ -74,13 +84,27 @@ def upsert_data_to_collection(client: QdrantClient, collection_name: str, docume
         )
 
     # 3. Insérer les points dans Qdrant par lots
-    print(f"Insertion de {len(points)} points dans '{collection_name}'...")
-    client.upsert(
-        collection_name=collection_name,
-        points=points,
-        wait=True,
-    )
-    print(f"Insertion dans '{collection_name}' terminée.")
+    batch_size = 100  # Taille du lot (ajustable selon la taille de vos documents)
+    total_batches = (len(points) + batch_size - 1) // batch_size
+    
+    print(f"Insertion de {len(points)} points dans '{collection_name}' par lots de {batch_size}...")
+    
+    for i in range(0, len(points), batch_size):
+        batch = points[i:i + batch_size]
+        batch_num = (i // batch_size) + 1
+        
+        try:
+            client.upsert(
+                collection_name=collection_name,
+                points=batch,
+                wait=True,
+            )
+            print(f"  ✓ Lot {batch_num}/{total_batches} inséré ({len(batch)} points)")
+        except Exception as e:
+            print(f"  ✗ Erreur lors de l'insertion du lot {batch_num} : {e}")
+            raise
+    
+    print(f"✅ Insertion dans '{collection_name}' terminée.")
 
 
 def run_populate_collections(limit: int = 0):
@@ -92,23 +116,23 @@ def run_populate_collections(limit: int = 0):
         print("Aucun document à traiter. Arrêt du script.")
         return
 
-    synth_documents = [doc for doc in all_documents if doc.metadata.get("source") == "synthetic"]
+    # synth_documents = [doc for doc in all_documents if doc.metadata.get("source") == "synth"]
 
     try:
-        client = QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_PORT)
-        print(f"\nConnecté à Qdrant sur {config.QDRANT_HOST}:{config.QDRANT_PORT}")
+        client = QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_PORT, timeout=30000)
+        print(f"\n🔗 Connecté à Qdrant sur {config.QDRANT_HOST}:{config.QDRANT_PORT}")
 
-        upsert_data_to_collection(client, PUBLIC_COLLECTION_NAME, synth_documents)
+        # upsert_data_to_collection(client, PUBLIC_COLLECTION_NAME, synth_documents)
         upsert_data_to_collection(client, MAIN_KB_COLLECTION_NAME, all_documents)
 
         print("\n--- Vérification finale du nombre de points ---")
         public_count = client.count(collection_name=PUBLIC_COLLECTION_NAME, exact=True)
         main_kb_count = client.count(collection_name=MAIN_KB_COLLECTION_NAME, exact=True)
-        print(f"Collection '{PUBLIC_COLLECTION_NAME}' contient : {public_count.count} points.")
-        print(f"Collection '{MAIN_KB_COLLECTION_NAME}' contient : {main_kb_count.count} points.")
+        print(f"📊 Collection '{PUBLIC_COLLECTION_NAME}' : {public_count.count} points")
+        print(f"📊 Collection '{MAIN_KB_COLLECTION_NAME}' : {main_kb_count.count} points")
 
     except Exception as e:
-        print(f"\nUne erreur est survenue lors de l'opération avec Qdrant : {e}")
+        print(f"\n❌ Erreur lors de l'opération avec Qdrant : {e}")
 
 if __name__ == "__main__":
     TEST_LIMIT = 200

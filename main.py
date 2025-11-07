@@ -1,6 +1,6 @@
 # main.py
 from fastapi import FastAPI
-from router import ingestion
+from router import ingestion, retriever
 
 app = FastAPI(
     title="GenAI Workflow Automate API",
@@ -8,8 +8,9 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Inclure le routeur d'ingestion
+# Inclure les routeurs
 app.include_router(ingestion.router)
+app.include_router(retriever.router)
 
 @app.get("/", tags=["Root"])
 async def read_root():

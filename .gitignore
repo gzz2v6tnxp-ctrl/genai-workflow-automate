@@ -1,5 +1,6 @@
 __pycache__/
 .env
-.vscode/
+.vscode
 data/
 outputs/
+snapshots/

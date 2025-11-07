@@ -9,11 +9,12 @@ from langchain_core.documents import Document
 # depuis d'autres dossiers (ex: scripts/ingest)
 sys.path.append(str(Path(__file__).parent.parent))
 
+from scripts import config
 from scripts.ingest.ingest_synth import load_synth_docs
 
 # --- Constantes ---
-# Modèle recommandé dans la roadmap : efficace et polyvalent.
-DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+# Utiliser le modèle configuré dans config.py
+DEFAULT_EMBEDDING_MODEL = config.DEFAULT_EMBEDDING_MODEL
 
 
 def generate_embeddings(
