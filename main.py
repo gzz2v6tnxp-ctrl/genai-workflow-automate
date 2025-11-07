@@ -1,6 +1,6 @@
 # main.py
 from fastapi import FastAPI
-from router import ingestion, retriever
+from router import ingestion, retriever, chatbot
 
 app = FastAPI(
     title="GenAI Workflow Automate API",
@@ -9,8 +9,9 @@ app = FastAPI(
 )
 
 # Inclure les routeurs
-app.include_router(ingestion.router)
-app.include_router(retriever.router)
+# app.include_router(ingestion.router)
+# app.include_router(retriever.router)
+app.include_router(chatbot.router)
 
 @app.get("/", tags=["Root"])
 async def read_root():

@@ -105,11 +105,13 @@
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    API LAYER (FastAPI)                            │
+│                    API LAYER (FastAPI + Cache)                   │
 ├─────────────────────────────────────────────────────────────────┤
 │  • /search : Semantic search                                    │
 │  • /build-collections : Collection management                   │
 │  • /populate-collections : Data ingestion                       │
+│  • /chatbot/query : RAG + LLM generation                        │
+│  • Redis (optional) : TTL response cache                        │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -136,14 +138,24 @@
 ┌──────────┐   ┌──────────┐
 │ generate │   │ fallback │
 └────┬─────┘   └────┬─────┘
-     │              │
-     └──────┬───────┘
-            │
-            ▼
-       ┌────────┐
-       │  END   │
-       └────────┘
+  │              │
+ (language          │
+  validator +       │
+   retry)      (bilingual)
+  │          fallback
+  └──────┬───────┘
+      │
+      ▼
+    ┌────────┐
+    │  END   │
+    └────────┘
 ```
+
+Notes importantes :
+- Le nœud `generate` applique un validateur de langue. Si la sortie ne correspond pas à la langue de la question, une seconde génération « stricte » est tentée.
+- Le nœud `fallback` produit une réponse en français ou en anglais selon détection automatique, sans mélange de langues.
+- Les prompts sont chargés dynamiquement depuis `agents/prompts.md` via des marqueurs HTML (version 1.1.0) pour faciliter la maintenance.
+- Support extensible de `output_format` (text/json) pour réponses structurées.
 
 ---
 
@@ -160,6 +172,8 @@
 | **Embeddings** | Sentence-Transformers | >=2.2.2 | Text vectorization |
 | **API Framework** | FastAPI | Latest | REST API |
 | **Server** | Uvicorn | Latest | ASGI server |
+| **Validation** | Pydantic | Latest | Data models |
+| **Cache** | Redis (optionnel) | 7+ | Réponses RAG (TTL) |
 | **Data Processing** | Pandas, NumPy | Latest | Data manipulation |
 | **Environment** | Python-dotenv | Latest | Config management |
 | **Testing** | Pytest | Latest | Unit tests |
@@ -239,6 +253,10 @@ OPENAI_API_KEY=sk-...
 
 # Collection Names
 COLLECTION_NAME=genai_workflow_docs_test
+
+# Cache (optionnel)
+REDIS_URL=redis://localhost:6379/0
+REDIS_TTL=600
 ```
 
 ### Structure de Configuration
@@ -318,6 +336,30 @@ uvicorn main:app --workers 4 --host 0.0.0.0 --port 8000
 
 #### 1. Recherche Sémantique
 
+## 🧠 Prompts & Génération
+
+Fichier : `agents/prompts.md` (Version 1.1.0)
+
+Points clés :
+- Markers HTML (`<!-- PROMPT:... -->`) pour extraction stable (system/user/fallback).
+- Few-shot intégrés FR & EN pour un style consistant.
+- Enforcement strict : même langue que la question, jamais de mélange (validator + retry).
+- Variable `{output_format}` (actuellement "text", extensible vers "json").
+- Fallback structuré prêt pour JSON (summary, next_actions, escalation, disclaimer).
+
+## ⚡ Cache & Performance
+
+Objectif : amortir le coût LLM et réduire la latence.
+
+Stratégie :
+- Niveau 1 : Redis (si `REDIS_URL` défini) avec TTL (`REDIS_TTL`).
+- Niveau 2 : Cache mémoire (`LocalTTLCache`) avec expiration et éviction simple.
+- Clé = SHA256(collection + output_format + question normalisée).
+
+Avantages :
+- Moins d'appels au LLM pour les requêtes répétées.
+- Réponses quasi instantanées sur cache hit.
+- Indépendant du contenu vectoriel.
 ```http
 POST /api/retriever/search
 Content-Type: application/json
@@ -369,6 +411,53 @@ GET /api/retriever/documents/{document_id}?collection_name=knowledge_base_main
 ```http
 POST /api/ingestion/build-collections
 POST /api/ingestion/populate-collections
+```
+
+#### 5. Chatbot (RAG + LLM + Cache)
+
+```http
+POST /api/v1/chatbot/query
+Content-Type: application/json
+
+{
+  "question": "unauthorized charge on my credit card",
+  "collection": "demo_public",
+  "output_format": "text"
+}
+```
+
+Exemple de réponse :
+```json
+{
+  "question": "unauthorized charge on my credit card",
+  "answer": "Take immediate action: 1) Freeze the card via fraud line...",
+  "language": "en",
+  "confidence": 0.716,
+  "sources": [
+    {"id": "123", "score": 0.716, "source": "synth", "lang": "en", "type": "ticket"}
+  ],
+  "mode": "generate"
+}
+```
+
+Cache :
+- Clé = SHA256(collection + output_format + question normalisée)
+- TTL par défaut : 600s (`REDIS_TTL`)
+- Fallback local en mémoire si Redis indisponible
+- Réduction de latence significative sur requêtes répétées
+
+Filtrage par source (collection knowledge_base_main) :
+
+```http
+POST /api/v1/chatbot/query
+Content-Type: application/json
+
+{
+  "question": "chargeback timeline",
+  "collection": "knowledge_base_main",
+  "sources_filter": ["cfpb"],  // autorisés: "synth", "cfpb", "enron"
+  "output_format": "text"
+}
 ```
 
 ### Documentation Interactive

@@ -39,3 +39,6 @@ python-dotenv
 
 # Embeddings / NLP
 hf_xet
+
+# Language detection
+langdetect

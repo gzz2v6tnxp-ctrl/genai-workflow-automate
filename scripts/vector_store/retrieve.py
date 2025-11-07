@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Filter, FieldCondition, MatchValue
+from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny
 
 # Ajouter le répertoire racine du projet au path
 project_root = Path(__file__).parent.parent.parent
@@ -89,9 +89,15 @@ class DocumentRetriever:
         if filters:
             conditions = []
             for key, value in filters.items():
-                conditions.append(
-                    FieldCondition(key=key, match=MatchValue(value=value))
-                )
+                # Enforce OR on multiple values using MatchAny (strict)
+                if isinstance(value, (list, tuple, set)):
+                    conditions.append(
+                        FieldCondition(key=key, match=MatchAny(any=list(value)))
+                    )
+                else:
+                    conditions.append(
+                        FieldCondition(key=key, match=MatchValue(value=value))
+                    )
             query_filter = Filter(must=conditions)
 
         # 3. Rechercher dans Qdrant
