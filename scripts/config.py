@@ -27,6 +27,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")  # Modèle par défaut pour la génération
 OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", 0.2))  # Créativité de la réponse (0-2)
 OPENAI_MAX_TOKENS = int(os.getenv("OPENAI_MAX_TOKENS", 1000))  # Longueur maximale de la réponse
+OPENAI_TOP_P = float(os.getenv("OPENAI_TOP_P", 0.9))  # Valeur top_p pour le filtrage nucleus
 
 # --- Validation simple ---
 if not OPENAI_API_KEY:

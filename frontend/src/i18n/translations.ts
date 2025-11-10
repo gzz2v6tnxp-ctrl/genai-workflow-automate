@@ -17,7 +17,10 @@ const fr = {
   filtersApplied: 'Filtre appliqué',
   loading: 'Chargement...',
   error: 'Erreur lors de la requête',
-  footer: '© 2025 GenAI Workflow Automation'
+  footer: '© 2025 GenAI Workflow Automation- RAVELOJAONA Irinasoa Sitraka L.'
+  ,
+  showSamples: 'Afficher exemples',
+  hideSamples: 'Masquer exemples'
 }
 
 const en = {
@@ -37,7 +40,9 @@ const en = {
   filtersApplied: 'Filter applied',
   loading: 'Loading...',
   error: 'Error during request',
-  footer: '© 2025 GenAI Workflow Automation'
+  footer: '© 2025 GenAI Workflow Automation - RAVELOJAONA Irinasoa Sitraka L.',
+  showSamples: 'Show samples',
+  hideSamples: 'Hide samples'
 }
 
 export const t = (lang: Lang, key: keyof typeof en) => (lang === 'fr' ? (fr as any)[key] : (en as any)[key])

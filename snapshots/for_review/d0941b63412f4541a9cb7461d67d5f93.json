@@ -1,0 +1,61 @@
+{
+  "id": "d0941b63412f4541a9cb7461d67d5f93",
+  "timestamp": "2025-11-10T18:05:58.564376",
+  "question": "Carte bancaire bloquée et transaction en panne",
+  "documents": [
+    "[Document 1] (Score: 0.676)\nRésumé hebdomadaire des ventes pour cartes bancaires\n\nRapport pour cartes bancaires :\n\nNombre total de transactions : [NUMBER].19\nVariation vs période précédente : 31.5%\nProblème principal : remboursement manquant\n\nRésumé : La période montre une tendance positive.\n",
+    "[Document 2] (Score: 0.652)\nRésumé hebdomadaire des ventes pour cartes bancaires\n\nRapport pour cartes bancaires :\n\nNombre total de transactions : [NUMBER].27\nVariation vs période précédente : 1.2%\nProblème principal : activité suspecte\n\nRésumé : La période montre une tendance positive.\n",
+    "[Document 3] (Score: 0.646)\nRésumé hebdomadaire des ventes pour cartes bancaires\n\nRapport pour cartes bancaires :\n\nNombre total de transactions : [NUMBER].09\nVariation vs période précédente : -15.5%\nProblème principal : prélèvement échoué\n\nRésumé : La période montre une tendance négative.\n",
+    "[Document 4] (Score: 0.509)\nRésumé hebdomadaire des ventes pour comptes d'épargne\n\nRapport pour comptes d'épargne :\n\nNombre total de transactions : [NUMBER].7\nVariation vs période précédente : 9.4%\nProblème principal : remboursement manquant\n\nRésumé : La période montre une tendance positive.\n",
+    "[Document 5] (Score: 0.509)\nRésumé hebdomadaire des ventes pour prêts à la consommation\n\nRapport pour prêts à la consommation :\n\nNombre total de transactions : [NUMBER].32\nVariation vs période précédente : 7.5%\nProblème principal : remboursement manquant\n\nRésumé : La période montre une tendance positive.\n"
+  ],
+  "sources": [
+    {
+      "id": "5db73074-b95e-43d3-aa14-7d1d1e2aaebf",
+      "score": 0.67579406,
+      "source": "synth",
+      "lang": "fr",
+      "type": "report_summary"
+    },
+    {
+      "id": "5e0c3e90-dacf-4aed-af93-ba9a83f82e25",
+      "score": 0.6519947,
+      "source": "synth",
+      "lang": "fr",
+      "type": "report_summary"
+    },
+    {
+      "id": "bf1318dd-b433-491b-8eb8-550bc3cbff03",
+      "score": 0.64637023,
+      "source": "synth",
+      "lang": "fr",
+      "type": "report_summary"
+    },
+    {
+      "id": "b3c13f78-c3e0-497b-8500-9960637b5e95",
+      "score": 0.50944436,
+      "source": "synth",
+      "lang": "fr",
+      "type": "report_summary"
+    },
+    {
+      "id": "e155fec6-5684-47f2-b148-1717f3182232",
+      "score": 0.5090268,
+      "source": "synth",
+      "lang": "fr",
+      "type": "report_summary"
+    }
+  ],
+  "generation": "Votre carte peut être bloquée pour les raisons suivantes :\n- Code PIN erroné\n- Suspicion de fraude\n- Solde insuffisant\n\nVoici ce que vous pouvez faire :\n1. Vérifiez votre solde.\n2. Contactez le service client au 01 XX XX XX XX pour vérification.\n3. En cas de fraude, faites opposition immédiatement au 09 XX XX XX XX.\n4. Un conseiller pourra réactiver votre carte après contrôle.",
+  "metrics": {
+    "timestamp": "2025-11-10T18:05:58.564376",
+    "question": "Carte bancaire bloquée et transaction en panne",
+    "avg_score": 0.59852603,
+    "confidence": 0.47882082400000003,
+    "cites_ok": false,
+    "hallucination": false,
+    "quality_pass": false,
+    "escalate": false,
+    "num_sources": 5
+  }
+}

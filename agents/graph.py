@@ -1,19 +1,24 @@
+import re
+from scripts.vector_store.retrieve import DocumentRetriever
+from scripts import config
+from agents.state import GraphState
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
+from langgraph.graph import END, StateGraph
 import sys
 from pathlib import Path
+import os
+import json
+import uuid
+from datetime import datetime
 
 # Ajouter le répertoire racine du projet au path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
 # Imports externes
-from langgraph.graph import END, StateGraph
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
 
 # Imports locaux
-from agents.state import GraphState
-from scripts import config
-from scripts.vector_store.retrieve import DocumentRetriever
 
 
 # Charger les prompts depuis le fichier Markdown
@@ -68,10 +73,12 @@ def load_prompts():
         return system_prompt, user_template
 
     # Fallback legacy parsing
-    system_start = content.find("```text", content.find("### **System Prompt**"))
+    system_start = content.find(
+        "```text", content.find("### **System Prompt**"))
     system_end = content.find("```", system_start + 7)
     system_prompt = content[system_start + 7:system_end].strip()
-    user_start = content.find("```text", content.find("### **User Prompt Template**"))
+    user_start = content.find(
+        "```text", content.find("### **User Prompt Template**"))
     user_end = content.find("```", user_start + 7)
     user_template = content[user_start + 7:user_end].strip()
     return system_prompt, user_template
@@ -86,11 +93,11 @@ try:
 except Exception:  # pragma: no cover
     _ld_detect = None
 
-import re
 
 FRENCH_MARKERS = {
     "carte", "bancaire", "compte", "problème", "bonjour", "merci", "solde", "crédit", "bloquée", "facturation", "non", "autorisé", "opposition"
 }
+
 
 def detect_language(text: str) -> str:
     """Détecte la langue (fr/en) de manière robuste.
@@ -122,6 +129,7 @@ def detect_language(text: str) -> str:
 def retrieve_documents(state):
     """Récupère les documents pertinents depuis Qdrant Cloud."""
     print("---RÉCUPÉRATION DES DOCUMENTS---")
+    print('State for retrieval:', state)
     question = state["question"]
     collection = state.get("collection", "demo_public")
     sources_filter = state.get("sources_filter")  # list[str] optionnelle
@@ -186,6 +194,124 @@ def retrieve_documents(state):
         return {"documents": [], "sources": [], "question": question, "error": str(e)}
 
 
+def evaluate_response(state):
+    """Quality gate: vérifie citations, calcule confiance et décide human_review/fallback/good.
+
+    - Enregistre une métrique ligne JSON dans `logs/metrics.jsonl`.
+    - Sauvegarde un snapshot JSON dans `snapshots/for_review/` quand échec.
+    - Définit dans le state: confidence, quality_pass, escalate
+    """
+    print("---EVALUATION DE LA RÉPONSE---")
+    generation = state.get("generation", "") or state.get("generation_text", "")
+    sources = state.get("sources", [])
+    documents = state.get("documents", [])
+    question = state.get("question", "")
+
+    # stabilité des scores
+    scores = [float(s.get("score", 0.0)) for s in sources] if sources else [0.0]
+    avg_score = sum(scores) / len(scores) if scores else 0.0
+    confidence = avg_score * 0.8
+
+    # vérification de citation par id ou chevauchement texte
+    cited_ids = [s["id"] for s in sources if str(s.get("id")) in generation]
+
+    def text_overlap(a: str, b: str) -> float:
+        aw = {w for w in re.findall(r"\w{3,}", a.lower())}
+        bw = {w for w in re.findall(r"\w{3,}", b.lower())}
+        if not aw or not bw:
+            return 0.0
+        inter = aw & bw
+        return len(inter) / max(1, min(len(aw), len(bw)))
+
+    overlap_found = False
+    for doc in documents:
+        ov = text_overlap(doc, generation)
+        if ov >= 0.06:  # seuil conservateur
+            overlap_found = True
+            break
+
+    cites_ok = bool(cited_ids) or overlap_found
+
+    # détection d'hallucination : années / montants présents dans la génération mais absents des docs
+    doc_text = " ".join(documents).lower()
+    years = re.findall(r"\b(19|20)\d{2}\b", generation)
+    amounts = re.findall(r"\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\s?(?:€|\$|usd|eur)\b", generation, flags=re.IGNORECASE)
+    hallucination = False
+    for y in years:
+        if str(y) not in doc_text:
+            hallucination = True
+            break
+    if not hallucination:
+        for a in amounts:
+            if a.lower() not in doc_text:
+                hallucination = True
+                break
+
+    # compute overlap ratio: proportion of docs whose first snippet appears in generation
+    overlap_count = 0
+    for doc in documents:
+        snippet = doc[:200].strip()
+        if snippet and snippet in generation:
+            overlap_count += 1
+    overlap_ratio = overlap_count / max(1, len(documents))
+
+    # decision: accept if NOT hallucination AND confidence >= 0.35 AND (cites_ok OR overlap_ratio>=0.35)
+    cites_ok = bool(cited_ids) or overlap_found
+    quality_pass = (not hallucination) and (confidence >= 0.35) and (cites_ok or overlap_ratio >= 0.35)
+    escalate = False
+    if not quality_pass:
+        escalate = (confidence < 0.25) or hallucination
+
+    # metrics/log
+    metrics = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "question": question,
+        "avg_score": avg_score,
+        "confidence": confidence,
+        "cites_ok": cites_ok,
+        "hallucination": hallucination,
+        "quality_pass": quality_pass,
+        "escalate": escalate,
+        "num_sources": len(sources)
+    }
+    logs_dir = Path(project_root) / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    metrics_file = logs_dir / "metrics.jsonl"
+    with open(metrics_file, "a", encoding="utf-8") as mf:
+        mf.write(json.dumps(metrics, ensure_ascii=False) + "\n")
+
+    # save snapshot if failing for human review / audit
+    if not quality_pass:
+        snaps_dir = Path(project_root) / "snapshots" / "for_review"
+        snaps_dir.mkdir(parents=True, exist_ok=True)
+        snap_id = uuid.uuid4().hex
+        snapshot = {
+            "id": snap_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "question": question,
+            "documents": documents,
+            "sources": sources,
+            "generation": generation,
+            "metrics": metrics
+        }
+        snap_path = snaps_dir / f"{snap_id}.json"
+        with open(snap_path, "w", encoding="utf-8") as sf:
+            json.dump(snapshot, sf, ensure_ascii=False, indent=2)
+
+        print(f"⚠️ Snapshot saved for review: {snap_path}")
+
+    print(f" -> avg_score={avg_score:.3f}, confidence={confidence:.3f}, cites_ok={cites_ok}, hallucination={hallucination}, quality_pass={quality_pass}, escalate={escalate}")
+
+    # persist additional metrics
+    state["confidence"] = confidence
+    state["quality_pass"] = quality_pass
+    state["escalate"] = escalate
+    state["overlap_ratio"] = overlap_ratio
+    state["cites_ok"] = cites_ok
+
+    return {"quality_pass": quality_pass, "confidence": confidence, "escalate": escalate}
+
+
 def grade_documents(state):
     """Évalue la pertinence des documents récupérés."""
     print("---ÉVALUATION DE LA PERTINENCE---")
@@ -228,9 +354,19 @@ def generate_answer(state):
     lang = detect_language(question)
     print(f"🈶 Langue détectée: {lang}")
 
-    # Préparer le contexte
-    context = "\n\n".join(documents)
-    
+    # Préparer le contexte: construire un bloc contenant l'ID + extrait pour chaque source
+    sources_block = []
+    for s, doc in zip(sources, documents):
+        sid = s.get("id")
+        score = round(float(s.get("score", 0.0)), 3)
+        # doc already formatted as '[Document i] (Score: x)\n<content>' - take content part
+        excerpt = doc
+        if len(excerpt) > 400:
+            excerpt = excerpt[:400] + "..."
+        sources_block.append(f"[{sid}] (score: {score})\n{excerpt}\n")
+
+    context_text = "\n\n".join(sources_block) if sources_block else "\n\n".join(documents)
+
     # Construire le system prompt dynamique selon la langue détectée
     if lang == "en":
         dynamic_system = (
@@ -251,7 +387,8 @@ def generate_answer(state):
             "Answer professionally and solution-oriented, in the SAME LANGUAGE as the user's question (English here)."
         )
     else:  # French
-        dynamic_system = SYSTEM_PROMPT + "\n\nLANGUE DÉTECTÉE: FR — Réponds UNIQUEMENT en français, ne mélange pas les langues."
+        dynamic_system = SYSTEM_PROMPT + \
+            "\n\nLANGUE DÉTECTÉE: FR — Réponds UNIQUEMENT en français, ne mélange pas les langues."
         user_template_dynamic = USER_TEMPLATE
 
     # Créer le prompt avec le format OpenAI (system + user) + variables
@@ -259,24 +396,44 @@ def generate_answer(state):
         ("system", dynamic_system),
         ("user", user_template_dynamic)
     ])
-    
-    # Initialiser le LLM
+
+    # Ancrage explicite: demander de citer les IDs des documents utilisés
+    anchor_instruction_en = (
+        "IMPORTANT: Use ONLY the documents listed below to answer. "
+        "Cite the source by its ID (e.g. [<id>]) each time you use information from a document. "
+        "If the information is not present, reply: 'I do not have enough information.' "
+        "Do not invent dates, amounts or personal data."
+    )
+    anchor_instruction_fr = (
+        "IMPORTANT: Utilisez UNIQUEMENT les documents listés ci-dessous pour répondre. "
+        "Citez la source par son ID (ex: [<id>]) chaque fois que vous utilisez une information. "
+        "Si l'information n'est pas présente, répondez: 'Je n'ai pas assez d'informations.' "
+        "Ne pas inventer de dates, montants ou données personnelles."
+    )
+
+    if lang == "en":
+        user_template_dynamic = anchor_instruction_en + "\n\n" + user_template_dynamic
+    else:
+        user_template_dynamic = anchor_instruction_fr + "\n\n" + user_template_dynamic
+
+    # Initialiser le LLM (casts explicites)
     llm = ChatOpenAI(
         model=config.OPENAI_MODEL,
-        temperature=config.OPENAI_TEMPERATURE,
-        max_tokens=config.OPENAI_MAX_TOKENS,
+        temperature=float(getattr(config, "OPENAI_TEMPERATURE", 0.2)),
+        top_p=float(getattr(config, "OPENAI_TOP_P", 0.9)),
+        max_tokens=int(getattr(config, "OPENAI_MAX_TOKENS", 1024)),
         api_key=config.OPENAI_API_KEY
     )
-    
+
     # Créer la chaîne
     chain = prompt | llm
 
     try:
-        # Générer la réponse
+        # Générer la réponse en passant le contexte construit (IDs + extraits)
         response = chain.invoke({
-            "context": context,
+            "context": context_text,
             "question": question,
-            "output_format": "text"  # peut évoluer vers 'json' selon besoin futur
+            "output_format": "text"
         })
         generation = response.content
 
@@ -288,9 +445,11 @@ def generate_answer(state):
         if not _validate_lang(generation, lang):
             print("⚠️ Langue de la réponse non conforme. Nouvelle tentative stricte...")
             if lang == "en":
-                strict_system = dynamic_system + "\n\nHARD REQUIREMENT: Reply ONLY in English. If any non-English word appears, rewrite fully in English."
+                strict_system = dynamic_system + \
+                    "\n\nHARD REQUIREMENT: Reply ONLY in English. If any non-English word appears, rewrite fully in English."
             else:
-                strict_system = dynamic_system + "\n\nEXIGENCE FORTE: Réponds UNIQUEMENT en français. Si des mots non-français apparaissent, réécris intégralement en français."
+                strict_system = dynamic_system + \
+                    "\n\nEXIGENCE FORTE: Réponds UNIQUEMENT en français. Si des mots non-français apparaissent, réécris intégralement en français."
 
             strict_prompt = ChatPromptTemplate.from_messages([
                 ("system", strict_system),
@@ -298,7 +457,7 @@ def generate_answer(state):
             ])
             strict_chain = strict_prompt | llm
             response2 = strict_chain.invoke({
-                "context": context,
+                "context": context_text,
                 "question": question,
                 "output_format": "text"
             })
@@ -309,7 +468,32 @@ def generate_answer(state):
         print(f"✅ Réponse générée ({len(generation)} caractères)")
         print(f"Modèle: {config.OPENAI_MODEL}")
 
-        return {"generation": generation, "sources": sources, "response_lang": lang}
+        # Detect cited IDs in the generation (for logging / evaluation)
+        detected_ids = []
+        for s in sources:
+            sid = str(s.get("id", ""))
+            if sid and sid in generation:
+                detected_ids.append(sid)
+
+        # Log LLM output for audit/debug
+        try:
+            logs_dir = Path(project_root) / "logs"
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            llm_log = {
+                "timestamp": datetime.utcnow().isoformat(),
+                "question": question,
+                "response_lang": lang,
+                "detected_ids": detected_ids,
+                "generation_trunc": generation[:1000],
+                "num_sources": len(sources)
+            }
+            with open(logs_dir / "llm_responses.jsonl", "a", encoding="utf-8") as lf:
+                lf.write(json.dumps(llm_log, ensure_ascii=False) + "\n")
+        except Exception as e:
+            print(f"Warning: could not write llm log: {e}")
+
+        # conserver documents et sources dans l'état pour l'évaluation
+        return {"generation": generation, "sources": sources, "response_lang": lang, "documents": documents}
 
     except Exception as e:
         print(f"❌ Erreur LLM: {e}")
@@ -322,6 +506,8 @@ def generate_answer(state):
             "sources": sources,
             "response_lang": lang
         }
+
+
 def fallback_response(state):
     """Réponse par défaut si aucun document pertinent."""
     print("---FALLBACK---")
@@ -340,6 +526,36 @@ def fallback_response(state):
     return {"generation": generation, "sources": [], "response_lang": lang}
 
 
+def human_review(state):
+    """Nœud d'escalade humaine: renvoie un message d'escalade et marque l'état.
+
+    Le snapshot pour revue est enregistré dans evaluate_response, ici on renvoie
+    un message lisible pour l'utilisateur et indique escalated=True.
+    """
+    print("---HUMAN REVIEW ESCALATION---")
+    lang = detect_language(state.get("question", "") or "")
+    if lang == "en":
+        msg = (
+            "We could not provide a confident automated answer. "
+            "Your request has been escalated to our specialists. "
+            "You will be contacted shortly."
+        )
+    else:
+        msg = (
+            "Nous ne pouvons pas fournir une réponse automatisée fiable. "
+            "Votre demande a été transférée à nos spécialistes. "
+            "Vous serez contacté(e) sous peu."
+        )
+
+    # Indicate escalation in the returned payload
+    return {
+        "generation": msg,
+        "sources": state.get("sources", []),
+        "response_lang": lang,
+        "escalated": True,
+    }
+
+
 def decide_to_generate(state):
     """Détermine le chemin à suivre après l'évaluation."""
     return "generate" if state.get("grade") == "relevant" else "fallback"
@@ -350,6 +566,8 @@ workflow = StateGraph(GraphState)
 workflow.add_node("retrieve", retrieve_documents)
 workflow.add_node("grade_documents", grade_documents)
 workflow.add_node("generate", generate_answer)
+workflow.add_node("evaluate_response", evaluate_response)
+workflow.add_node("human_review", human_review)
 workflow.add_node("fallback", fallback_response)
 
 workflow.set_entry_point("retrieve")
@@ -360,7 +578,13 @@ workflow.add_conditional_edges(
     decide_to_generate,
     {"generate": "generate", "fallback": "fallback"}
 )
-workflow.add_edge("generate", END)
+workflow.add_edge("generate", "evaluate_response")
+# Routing: if quality_pass -> END, elif escalate -> human_review, else -> fallback
+workflow.add_conditional_edges(
+    "evaluate_response",
+    lambda st: "end" if st.get("quality_pass") else ("human_review" if st.get("escalate") else "fallback"),
+    {"end": END, "fallback": "fallback", "human_review": "human_review"}
+)
 workflow.add_edge("fallback", END)
 
 app = workflow.compile()

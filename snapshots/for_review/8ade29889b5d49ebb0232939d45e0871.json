@@ -1,0 +1,61 @@
+{
+  "id": "8ade29889b5d49ebb0232939d45e0871",
+  "timestamp": "2025-11-10T19:38:14.224335",
+  "question": "Quelle est la procédure to dispute a credit card charge?",
+  "documents": [
+    "[Document 1] (Score: 0.603)\nOn XX/XX/year> in XXXX XXXX, we took what we thought was a legitimate taxi for a short distance ( less than two miles ), The agreed upon price was a flat {$25.00} Euros. There was no confusion on either our part or the taxi driver with regard to price. He spoke perfect XXXX. \nThey charged our Credit Card a fraudulent amount ( approaching {$3000.00} ). \n( Note the device he used to charge the card indicated XXXX XXXX  ) We were almost immediately aware of this as we have notifications set on our card to notify us via text and email for any and all charges.",
+    "[Document 2] (Score: 0.578)\nWhen the charge occurred we requested a receipt, none was provided. \nWith the above noted we fail to see what additional steps we could have taken to prevent this fraud or to rectify this matter. Since this occurrence we have contacted US Bank via phone and also in writing to dispute the charge. They have been provided the same information that is outlined here.",
+    "[Document 3] (Score: 0.573)\n. My request for a refund of the improperly charged fee was denied.",
+    "[Document 4] (Score: 0.553)\n. I did not receive any validation information as XXXX XXXX was collecting on behalf of XXXX. I spoke with a supervisor named XXXX whom advised that XXXX sent a letter advising i could dispute the charge and XXXX would not attempt to recollect but would not give a direct company refund for the charge. I requested a copy of the letter per my FDCPA and consumer rights and was advised XXXX could not resend the letter. American Express has no right to pay a charge I am disputing from my prepaid American Express",
+    "[Document 5] (Score: 0.542)\nGiven the circumstances the out-of-state fraudulent transactions, the likely fake or fraudulent merchant, and the mishandling of the dispute process I believe XXXX XXXX American Express Prepaid Card XXXX XXXX XXXX XXXX XXXX XXXX its duty to protect consumers from fraud and improperly denied a legitimate dispute. I am now out over XXXX XXXX XXXX {$230.00} * *, and the company refuses to offer resolution or transparency."
+  ],
+  "sources": [
+    {
+      "id": "94f998d5-0eda-5317-90e1-a34641f100df",
+      "score": 0.6030337,
+      "source": "cfpb",
+      "lang": "en",
+      "type": "unknown"
+    },
+    {
+      "id": "743fe240-6221-5381-aca5-3d819ac6312d",
+      "score": 0.5784102,
+      "source": "cfpb",
+      "lang": "en",
+      "type": "unknown"
+    },
+    {
+      "id": "c6d9c34e-c041-5bd7-bd66-46f2b3a69ea3",
+      "score": 0.57284653,
+      "source": "cfpb",
+      "lang": "en",
+      "type": "unknown"
+    },
+    {
+      "id": "e8cd76cc-8409-584e-9215-1637aedebecd",
+      "score": 0.5526078,
+      "source": "cfpb",
+      "lang": "en",
+      "type": "unknown"
+    },
+    {
+      "id": "11f6512f-81fc-5600-9204-f3651dab6e5c",
+      "score": 0.5423852,
+      "source": "cfpb",
+      "lang": "en",
+      "type": "unknown"
+    }
+  ],
+  "generation": "Pour contester une charge sur une carte de crédit, voici la procédure à suivre :\n\n1. Contactez immédiatement votre banque pour signaler la fraude.\n2. Fournissez tous les détails pertinents : date, montant, commerçant.\n3. Demandez à geler la carte via la ligne de fraude de la banque.\n4. Déposez une réclamation officielle dans les délais impartis (généralement 60 jours).\n5. Examinez vos relevés récents pour d'autres anomalies.\n6. Vous ne serez pas tenu responsable pendant l'enquête.\n7. Une nouvelle carte de remplacement vous sera envoyée sous environ 7 jours.",
+  "metrics": {
+    "timestamp": "2025-11-10T19:38:14.223338",
+    "question": "Quelle est la procédure to dispute a credit card charge?",
+    "avg_score": 0.5698566860000001,
+    "confidence": 0.4558853488000001,
+    "cites_ok": false,
+    "hallucination": false,
+    "quality_pass": false,
+    "escalate": false,
+    "num_sources": 5
+  }
+}

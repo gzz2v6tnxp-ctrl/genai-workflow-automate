@@ -1,0 +1,45 @@
+{
+  "id": "8fe3b9548ff2496182d964b71a98ed02",
+  "timestamp": "2025-11-10T19:54:50.494498",
+  "question": "Ma carte bancaire est bloquée, que dois-je faire ?",
+  "documents": [
+    "[Document 1] (Score: 0.551)\nRésumé hebdomadaire des ventes pour cartes bancaires\n\nRapport pour cartes bancaires :\n\nNombre total de transactions : [NUMBER].19\nVariation vs période précédente : 31.5%\nProblème principal : remboursement manquant\n\nRésumé : La période montre une tendance positive.\n",
+    "[Document 2] (Score: 0.539)\nRésumé hebdomadaire des ventes pour cartes bancaires\n\nRapport pour cartes bancaires :\n\nNombre total de transactions : [NUMBER].27\nVariation vs période précédente : 1.2%\nProblème principal : activité suspecte\n\nRésumé : La période montre une tendance positive.\n",
+    "[Document 3] (Score: 0.536)\nRésumé hebdomadaire des ventes pour cartes bancaires\n\nRapport pour cartes bancaires :\n\nNombre total de transactions : [NUMBER].09\nVariation vs période précédente : -15.5%\nProblème principal : prélèvement échoué\n\nRésumé : La période montre une tendance négative.\n"
+  ],
+  "sources": [
+    {
+      "id": "5db73074-b95e-43d3-aa14-7d1d1e2aaebf",
+      "score": 0.5505346,
+      "source": "synth",
+      "lang": "fr",
+      "type": "report_summary"
+    },
+    {
+      "id": "5e0c3e90-dacf-4aed-af93-ba9a83f82e25",
+      "score": 0.53891516,
+      "source": "synth",
+      "lang": "fr",
+      "type": "report_summary"
+    },
+    {
+      "id": "bf1318dd-b433-491b-8eb8-550bc3cbff03",
+      "score": 0.53551316,
+      "source": "synth",
+      "lang": "fr",
+      "type": "report_summary"
+    }
+  ],
+  "generation": "Votre carte peut être bloquée pour différentes raisons :\n- Code PIN erroné\n- Suspicion de fraude\n- Solde insuffisant\n\nVoici ce que vous pouvez faire :\n1. Vérifiez votre solde\n2. Contactez le service client au numéro indiqué pour vérification\n3. En cas de fraude, faites opposition immédiatement\n4. Un conseiller pourra réactiver votre carte après contrôle.",
+  "metrics": {
+    "timestamp": "2025-11-10T19:54:50.491506",
+    "question": "Ma carte bancaire est bloquée, que dois-je faire ?",
+    "avg_score": 0.5416543066666667,
+    "confidence": 0.4333234453333334,
+    "cites_ok": false,
+    "hallucination": false,
+    "quality_pass": false,
+    "escalate": false,
+    "num_sources": 3
+  }
+}

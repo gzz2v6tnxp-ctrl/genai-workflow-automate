@@ -15,6 +15,12 @@ export interface ChatMessage {
     lang: string
     type: string
   }>
+  // Evaluation metadata from the backend
+  quality_pass?: boolean | null
+  escalate?: boolean | null
+  cites_ok?: boolean | null
+  overlap_ratio?: number | null
+  hallucination?: boolean | null
   createdAt: number
 }
 
@@ -45,6 +51,11 @@ export function useChat(lang: Lang) {
         language: data.language,
         confidence: data.confidence,
         sources: data.sources || [],
+        quality_pass: data.quality_pass ?? null,
+        escalate: data.escalate ?? null,
+        cites_ok: data.cites_ok ?? null,
+        overlap_ratio: data.overlap_ratio ?? null,
+        hallucination: data.hallucination ?? null,
         createdAt: Date.now()
       }
       setMessages(m => [msg, ...m])

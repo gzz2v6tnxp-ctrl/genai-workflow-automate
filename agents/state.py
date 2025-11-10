@@ -1,18 +1,29 @@
-from typing import List, TypedDict
+from typing import List, TypedDict, Optional
 
-class GraphState(TypedDict):
+
+class GraphState(TypedDict, total=False):
     """
     Représente l'état de notre graphe.
 
-    Attributs:
-        question (str): La question du ticket client.
-        generation (str): La réponse générée par le LLM.
-        documents (List[str]): La liste des documents récupérés du vector store.
-        sources (List[str]): La liste des sources des documents pertinents.
-        grade (str): La décision de pertinence des documents ('relevant' ou 'not_relevant').
+    Les clés sont facultatives (total=False) car le graphe construit progressivement l'état.
+
+    Champs courants:
+      - question (str)
+      - generation (str)
+      - documents (List[str])
+      - sources (List[dict])
+      - grade (str)
+      - collection (str)         # collection demandée par le client
+      - sources_filter (List[str])
+      - response_lang (str)
+      - confidence (float)
     """
     question: str
     generation: str
     documents: List[str]
     sources: List[str]
     grade: str
+    collection: str
+    sources_filter: List[str]
+    response_lang: str
+    confidence: float

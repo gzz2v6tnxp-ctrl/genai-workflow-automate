@@ -42,7 +42,7 @@ EXEMPLES (FEW-SHOT) :
 FR | Question: "Ma carte est bloquée" → Réponse: "Votre carte peut être bloquée pour : code PIN erroné, suspicion de fraude ou solde insuffisant. Vérifiez votre solde, puis contactez le service client au 01 XX XX XX XX pour vérification. En cas de fraude, faites opposition immédiatement (09 XX XX XX XX). Un conseiller peut réactiver après contrôle."
 EN | Question: "Unauthorized charge on my card" → Response: "Take immediate action: 1) Freeze the card via fraud line (1-800-XXX-XXXX). 2) List date/amount/merchant. 3) File a dispute (within 60 days). 4) Review last statements for other anomalies. You won't be liable during investigation. Replacement card shipped in ~7 days."
 
-Ne reproduis pas ces exemples mot pour mot; adapte-les au cas réel.
+Ne reproduis pas ces exemples mot pour mot; adapte-les selon les contenus des documents récupérés.
 ```
 <!-- PROMPT:GENERATION:SYSTEM:END -->
 

@@ -82,14 +82,33 @@ class ChatResponse(BaseModel):
     confidence: float
     sources: List[SourceInfo]
     mode: str
+    # Quality evaluation fields (optional, used by frontend for subtle UX)
+    quality_pass: Optional[bool] = None
+    escalate: Optional[bool] = None
+    cites_ok: Optional[bool] = None
+    overlap_ratio: Optional[float] = None
+    hallucination: Optional[bool] = None
 
 @router.post("/query", response_model=ChatResponse)
 async def query_chatbot(payload: ChatQuery):
     """Interroge le workflow RAG pour une question utilisateur."""
     try:
-        # Clé de cache
-        key_base = f"{payload.collection}:{payload.output_format}:{payload.question.strip().lower()}"
+        # Log reçu (debug) : afficher le payload tel que reçu par l'API
+        try:
+            print(f"[chatbot] received payload: collection={payload.collection} sources_filter={payload.sources_filter} output_format={payload.output_format}")
+        except Exception:
+            pass
+
+        # Clé de cache (inclure sources_filter pour éviter résultats partagés entre filtres)
+        sf = ",".join(sorted(payload.sources_filter)) if payload.sources_filter else ""
+        key_base = f"{payload.collection}:{sf}:{payload.output_format}:{payload.question.strip().lower()}"
         cache_key = "chat:" + hashlib.sha256(key_base.encode("utf-8")).hexdigest()
+
+        # Debug: afficher la clé de cache calculée
+        try:
+            print(f"[chatbot] cache_key={cache_key} key_base={key_base}")
+        except Exception:
+            pass
 
         # Tentative de cache
         ttl = int(os.getenv("REDIS_TTL", "600"))
@@ -109,31 +128,70 @@ async def query_chatbot(payload: ChatQuery):
             except Exception:
                 pass
 
-        last_generation: Dict[str, Any] | None = None
+        # Collect outputs from the RAG workflow
+        last_generate = None
+        last_fallback = None
+        last_evaluate = None
+        last_human = None
+
         for output in rag_app.stream({
             "question": payload.question,
             "collection": payload.collection,
             "sources_filter": payload.sources_filter,
         }):
             if "generate" in output:
-                last_generation = output["generate"]
-            elif "fallback" in output:
-                last_generation = output["fallback"]
+                last_generate = output["generate"]
+            if "fallback" in output:
+                last_fallback = output["fallback"]
+            if "evaluate_response" in output:
+                # evaluation node returns quality_pass/confidence/escalate
+                last_evaluate = output["evaluate_response"]
+            if "human_review" in output:
+                last_human = output["human_review"]
 
-        if not last_generation:
+        # Decide final payload based on evaluation
+        chosen = None
+        mode = "fallback"
+        confidence = 0.0
+
+        if last_evaluate is not None:
+            if last_evaluate.get("quality_pass"):
+                chosen = last_generate or last_fallback
+                mode = "generate"
+                confidence = float(last_evaluate.get("confidence", 0.0))
+            else:
+                # not quality_pass
+                if last_evaluate.get("escalate") and last_human is not None:
+                    chosen = last_human
+                    mode = "human_review"
+                    confidence = float(last_evaluate.get("confidence", 0.0))
+                else:
+                    chosen = last_fallback or last_generate
+                    mode = "fallback"
+                    confidence = float(last_evaluate.get("confidence", 0.0))
+        else:
+            # no evaluation node present -> fallback to generate or fallback
+            if last_generate is not None:
+                chosen = last_generate
+                mode = "generate"
+                # derive confidence from sources if possible
+                srcs = chosen.get("sources", [])
+                if srcs:
+                    try:
+                        confidence = round(float(srcs[0].get("score", 0.0)), 3)
+                    except Exception:
+                        confidence = 0.0
+            elif last_fallback is not None:
+                chosen = last_fallback
+                mode = "fallback"
+                confidence = 0.0
+
+        if not chosen:
             raise HTTPException(status_code=500, detail="Aucune réponse générée")
 
-        gen_content = last_generation.get("generation")
-        sources = last_generation.get("sources", [])
-        response_lang = last_generation.get("response_lang", "en")
-
-        # Confidence = meilleur score si disponible
-        confidence = 0.0
-        if sources:
-            try:
-                confidence = round(sources[0]["score"], 3)
-            except Exception:
-                confidence = 0.0
+        gen_content = chosen.get("generation")
+        sources = chosen.get("sources", [])
+        response_lang = chosen.get("response_lang") if chosen.get("response_lang") is not None else (last_generate or {}).get("response_lang", "en")
 
         # Normalisation de la réponse (string ou dict)
         if isinstance(gen_content, dict):
@@ -152,7 +210,8 @@ async def query_chatbot(payload: ChatQuery):
                 type=s.get("type", "unknown")
             ))
 
-        mode = "generate" if any(k in last_generation for k in ["response_lang", "sources"]) and sources else "fallback"
+        # Attach evaluation metadata if present
+        eval_meta = last_evaluate or {}
 
         response_obj = ChatResponse(
             question=payload.question,
@@ -160,8 +219,32 @@ async def query_chatbot(payload: ChatQuery):
             language=response_lang,
             confidence=confidence,
             sources=mapped_sources,
-            mode=mode
+            mode=mode,
+            quality_pass=eval_meta.get("quality_pass") if isinstance(eval_meta, dict) else None,
+            escalate=eval_meta.get("escalate") if isinstance(eval_meta, dict) else None,
+            cites_ok=eval_meta.get("cites_ok") if isinstance(eval_meta, dict) else None,
+            overlap_ratio=eval_meta.get("overlap_ratio") if isinstance(eval_meta, dict) else None,
+            hallucination=eval_meta.get("hallucination") if isinstance(eval_meta, dict) else None,
         )
+
+        # Debug log to console for tracing which branch was chosen
+        try:
+            print(f"[chatbot] chosen_mode={mode} confidence={confidence} response_lang={response_lang} sources_filter={payload.sources_filter}")
+        except Exception:
+            pass
+
+        # Extra debug: print the actual chosen payload returned by the workflow
+        try:
+            # show a trimmed preview (avoid huge dumps) but include keys
+            if isinstance(chosen, dict):
+                preview = {
+                    k: (v if k != 'generation' else (v[:600] + ('...' if len(v) > 600 else ''))) for k, v in chosen.items()
+                }
+                print(f"[chatbot] chosen_payload_preview={json.dumps(preview, ensure_ascii=False)}")
+            else:
+                print(f"[chatbot] chosen_payload_type={type(chosen)}")
+        except Exception:
+            pass
 
         # Mise en cache
         try:

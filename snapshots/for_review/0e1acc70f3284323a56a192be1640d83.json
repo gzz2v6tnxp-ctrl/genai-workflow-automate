@@ -1,0 +1,61 @@
+{
+  "id": "0e1acc70f3284323a56a192be1640d83",
+  "timestamp": "2025-11-10T18:42:00.368238",
+  "question": "What was Enron's exact revenue in 2000?",
+  "documents": [
+    "[Document 1] (Score: 0.622)\n03:41 PM ---------------------------\n   \n\tEnron North America Corp.\n\t\n\tFrom:  John D Suarez                           09/05/2000 01:45 PM",
+    "[Document 2] (Score: 0.594)\n---------------------- Forwarded by Tim Belden/HOU/ECT on 09/06/2000 07:27 AM \n---------------------------\n   \n\tEnron Capital & Trade Resources Corp.\n\t\n\tFrom:  Kevin M Presto                           09/05/2000 01:59 PM\n\t\n\nTo: Tim Belden/HOU/ECT@ECT\ncc: Rogers Herndon/HOU/ECT@ect, John Zufferli/HOU/ECT@ECT, Lloyd \nWill/HOU/ECT@ECT, Doug Gilbert-Smith/Corp/Enron@ENRON, Mike \nSwerzbin/HOU/ECT@ECT \nSubject: Wow",
+    "[Document 3] (Score: 0.580)\nSubject: Daily Report\n\n---------------------- Forwarded by Phillip K Allen/HOU/ECT on 08/20/2000 \n05:38 PM ---------------------------\n\n\n\"Lucy Gonzalez\" <stagecoachmama@hotmail.com> on 08/17/2000 02:37:55 PM\nTo: pallen@enron.com\ncc:  \nSubject: Daily Report",
+    "[Document 4] (Score: 0.578)\nSubject: Daily Report\n\n---------------------- Forwarded by Phillip K Allen/HOU/ECT on 08/20/2000 \n05:38 PM ---------------------------\n\n\n\"Lucy Gonzalez\" <stagecoachmama@hotmail.com> on 08/16/2000 02:44:36 PM\nTo: pallen@enron.com\ncc:  \nSubject: Daily Report",
+    "[Document 5] (Score: 0.575)\nSubject: New Generation Update 7/24/00\n\n---------------------- Forwarded by Phillip K Allen/HOU/ECT on 07/26/2000 \n10:49 AM ---------------------------\n   \n\tEnron North America Corp.\n\t\n\tFrom:  Kristian J Lande                           07/25/2000 02:24 PM"
+  ],
+  "sources": [
+    {
+      "id": "7df8fdbf-9919-5e68-a0e1-613ee77519c0",
+      "score": 0.6215991,
+      "source": "enron",
+      "lang": "en",
+      "type": "unknown"
+    },
+    {
+      "id": "c8098820-01d8-51b5-978d-37a1beaac793",
+      "score": 0.5938593,
+      "source": "enron",
+      "lang": "en",
+      "type": "unknown"
+    },
+    {
+      "id": "8c6e490a-3ea1-59a8-ac35-ad70a8174eae",
+      "score": 0.5804127,
+      "source": "enron",
+      "lang": "en",
+      "type": "unknown"
+    },
+    {
+      "id": "f3646321-3944-50e3-bdda-10af474f162a",
+      "score": 0.577517,
+      "source": "enron",
+      "lang": "en",
+      "type": "unknown"
+    },
+    {
+      "id": "86c6f02a-399f-511b-809f-a9ba65df7f73",
+      "score": 0.57479036,
+      "source": "enron",
+      "lang": "en",
+      "type": "unknown"
+    }
+  ],
+  "generation": "I'm here to assist you with your banking inquiries. How can I help you today?",
+  "metrics": {
+    "timestamp": "2025-11-10T18:42:00.366288",
+    "question": "What was Enron's exact revenue in 2000?",
+    "avg_score": 0.5896356919999999,
+    "confidence": 0.4717085535999999,
+    "cites_ok": false,
+    "hallucination": false,
+    "quality_pass": false,
+    "escalate": false,
+    "num_sources": 5
+  }
+}
