@@ -1,5 +1,4 @@
 # ===== Requirements for GenAI Workflow Automation MVP =====
-hf_text                        # pour le traitement de texte
 
 # Web/API
 fastapi                # pour l'API backend
@@ -7,15 +6,15 @@ uvicorn[standard]      # serveur ASGI
 requests>=2.31.0       # pour les requêtes HTTP (utilisé dans restore_snapshot.py)
 
 # Vector database / retrieval
-qdrant-client>=1.14.2  # client Python pour la base vectorielle Qdrant :contentReference[oaicite:0]{index=0}
+qdrant-client>=1.14.2  # client Python pour la base vectorielle Qdrant
 
 # Embeddings / NLP
-sentence-transformers>=2.2.2  # modèles d’embedding efficaces
+sentence-transformers>=2.2.2  # modèles d'embedding efficaces
 transformers>=4.30.0          # pour modèles LLM ou wrapper
-openai                        # pour l’API OpenAI (si usage)
+openai                        # pour l'API OpenAI
 
 # Pipeline GenAI / workflow
-langchain>=0.0.278            # intégration retrieval + LLM (ex : LangChain)
+langchain>=0.0.278            # intégration retrieval + LLM
 langgraph                      # pour la création de graphes d'agents
 langchain_openai               # pour l'intégration avec l'API OpenAI   
 langchain-text-splitters       # pour le chuncking de texte
@@ -23,7 +22,7 @@ langchain-text-splitters       # pour le chuncking de texte
 # Data processing & utilities
 pandas>=1.5.0
 numpy>=1.24.0
-python-dotenv                # gestion des variables d’environnement
+python-dotenv                # gestion des variables d'environnement
 pytest                        # pour les tests unitaires
 
 # UI / Démo
@@ -32,13 +31,4 @@ gradio>=3.14.0                # interface simple pour la démonstration
 # Optional / Dev
 black                         # formateur de code (optionnel)
 pre-commit                    # hook de formatage/qualité (optionnel)
-
-# Env management
-python-dotenv
-
-
-# Embeddings / NLP
-hf_xet
-
-# Language detection
-langdetect
+langdetect                    # détection de langue pour évaluation
