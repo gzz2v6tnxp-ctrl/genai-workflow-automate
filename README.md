@@ -1,4 +1,4 @@
-# 🚀 GenAI Workflow Automate
+# 🚀 GenAI Workflow Automate - RAVELOJAONA Irinasoa Sitraka L.
 
 Une **pipeline RAG (Retrieval-Augmented Generation) robuste** avec qualité d'évaluation, escalade humaine et déploiement hybride (Frontend GitHub Pages + Backend Railway).
 
