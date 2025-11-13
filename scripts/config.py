@@ -13,7 +13,7 @@ QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 
 # Configuration Qdrant Cloud (pour la migration via snapshots)
 QDRANT_CLOUD_URL = os.getenv("QDRANT_CLOUD_URL")  # Ex: https://xxx.aws.cloud.qdrant.io
-# COLLECTION_NAME = os.getenv("COLLECTION_NAME", "genai_workflow_docs")
+COLLECTION_NAME = os.getenv("COLLECTION_NAME", "genai_workflow_docs_test")
 # COLLECTION_NAME = "demo_public"
 
 # --- Configuration du Modèle d'Embedding ---
@@ -26,7 +26,7 @@ DEFAULT_EMBEDDING_MODEL = str(os.getenv("DEFAULT_EMBEDDING_MODEL", "all-mpnet-ba
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")  # Modèle par défaut pour la génération
 OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", 0.2))  # Créativité de la réponse (0-2)
-OPENAI_MAX_TOKENS = int(os.getenv("OPENAI_MAX_TOKENS", 1000))  # Longueur maximale de la réponse
+OPENAI_MAX_TOKENS = int(os.getenv("OPENAI_MAX_TOKENS", 1024))  # Longueur maximale de la réponse
 OPENAI_TOP_P = float(os.getenv("OPENAI_TOP_P", 0.9))  # Valeur top_p pour le filtrage nucleus
 
 # --- Validation simple ---

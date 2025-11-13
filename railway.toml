@@ -1,0 +1,33 @@
+# Railway.app Configuration
+# Doc: https://docs.railway.app/
+
+[build]
+dockerfile = "Dockerfile"
+buildCommand = "pip install -r requirements.txt"
+
+[deploy]
+startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+restartPolicyMaxRetries = 5
+healthcheckPath = "/"
+healthcheckInterval = 10
+
+[[services]]
+name = "backend"
+builder = "dockerfile"
+buildCommand = "pip install -r requirements.txt"
+startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+numReplicas = 1
+
+[services.backend.variables]
+OPENAI_MODEL = "gpt-3.5-turbo"
+OPENAI_TEMPERATURE = "0.2"
+OPENAI_TOP_P = "0.9"
+OPENAI_MAX_TOKENS = "512"
+COLLECTION_NAME = "knowledge_base_main"
+REDIS_TTL = "600"
+
+# Secrets à ajouter manuellement dans Railway UI:
+# - OPENAI_API_KEY
+# - QDRANT_CLOUD_URL
+# - QDRANT_API_KEY
+# - ALLOWED_ORIGINS (optionnel)

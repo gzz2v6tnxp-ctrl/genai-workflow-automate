@@ -1,231 +1,94 @@
-```
-# 🤖 GenAI Workflow Automation
+# 🚀 GenAI Workflow Automate
 
-## 📋 Table des Matières
+Une **pipeline RAG (Retrieval-Augmented Generation) robuste** avec qualité d'évaluation, escalade humaine et déploiement hybride (Frontend GitHub Pages + Backend Railway).
 
-- [Vue d'ensemble](#vue-densemble)
-- [Architecture](#architecture)
-- [Technologies](#technologies)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Pipeline de Données](#pipeline-de-données)
-- [API Endpoints](#api-endpoints)
-- [Migration Cloud](#migration-cloud)
-- [Développement](#développement)
-- [Data & Licences](#data--licences)
-- [Références](#références)
+**Stack technique** :
+- 🧠 **LLM** : OpenAI ChatGPT (3.5-turbo)
+- 🔍 **Retrieval** : Qdrant Cloud (vecteur DB)
+- 📊 **Orchestration** : LangGraph (agentic workflows)
+- ⚡ **Backend** : FastAPI (Python)
+- 🎨 **Frontend** : React + Vite + TypeScript
+- 🐳 **Deployment** : Docker + Railway (backend) + GitHub Pages (frontend)
 
 ---
 
-## 🎯 Vue d'ensemble
+## 📋 Quick Links
 
-**GenAI Workflow Automation** est une solution MVP de traitement automatisé de tickets clients du secteur financier utilisant une architecture **RAG (Retrieval-Augmented Generation)** avec LLM. Le système permet de :
-
-- ✅ Ingérer et vectoriser des documents provenant de multiples sources
-- ✅ Effectuer une recherche sémantique performante sur une base de connaissances distribuée
-- ✅ Générer des réponses contextualisées via LLM (OpenAI GPT)
-- ✅ Orchestrer des workflows complexes avec LangGraph
-- ✅ Déployer en production avec Qdrant Cloud
-
-### 🎪 Cas d'usage
-
-**Secteur** : Services Financiers (Banque, Assurance, FinTech)
-
-**Problématique** : Automatiser le traitement de tickets clients (plaintes, demandes d'information) avec un système intelligent capable de comprendre le contexte et fournir des réponses pertinentes basées sur l'historique et la documentation interne.
-
-**Solution** : Pipeline RAG multi-sources combinant recherche vectorielle et génération LLM.
+1. [Installation locale](#installation-locale)
+2. [Configuration](#configuration)
+3. [Développement](#développement)
+4. [Déploiement hybride](#déploiement-hybride)
+5. [API Endpoints](#api-endpoints)
+6. [Observabilité](#observabilité)
+7. [Troubleshooting](#troubleshooting)
 
 ---
 
-## 🏗️ Architecture
+## 🔧 Prérequis
 
-### Architecture Globale
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         DATA SOURCES                              │
-├─────────────────────────────────────────────────────────────────┤
-│  • Synthetic Docs (100 docs, FR/EN)                             │
-│  • CFPB Complaints (10K records, EN)                            │
-│  • Enron Emails (Corporate communication, EN)                   │
-└──────────────────┬──────────────────────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    INGESTION PIPELINE                             │
-├─────────────────────────────────────────────────────────────────┤
-│  1. Document Loading (LangChain Document abstraction)           │
-│  2. Text Chunking (RecursiveCharacterTextSplitter)              │
-│     • Chunk size: 600 chars (~384 tokens)                       │
-│     • Overlap: 100 chars                                        │
-│  3. Embedding Generation (sentence-transformers)                │
-│     • Model: all-mpnet-base-v2                                  │
-│     • Dimension: 768                                            │
-│  4. Batch Insertion (100 points/batch)                          │
-└──────────────────┬──────────────────────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    VECTOR DATABASE                                │
-├─────────────────────────────────────────────────────────────────┤
-│  Qdrant (Docker local + Cloud)                                  │
-│  • Collection: demo_public (synthetic only)                     │
-│  • Collection: knowledge_base_main (all sources)                │
-│  • Distance metric: COSINE                                      │
-│  • Snapshots: Automated backup/restore                          │
-└──────────────────┬──────────────────────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    RETRIEVAL SYSTEM                               │
-├─────────────────────────────────────────────────────────────────┤
-│  • Semantic search with filters                                 │
-│  • Top-k results with score threshold                           │
-│  • Metadata filtering (source, date, etc.)                      │
-└──────────────────┬──────────────────────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    LANGGRAPH WORKFLOW                             │
-├─────────────────────────────────────────────────────────────────┤
-│  retrieve → grade_documents → generate / fallback               │
-│  • State management                                             │
-│  • Conditional routing                                          │
-│  • Error handling                                               │
-└──────────────────┬──────────────────────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    LLM GENERATION                                 │
-├─────────────────────────────────────────────────────────────────┤
-│  OpenAI GPT (via LangChain)                                     │
-│  • Contextualized response generation                           │
-│  • Source citation                                              │
-└──────────────────┬──────────────────────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    API LAYER (FastAPI + Cache)                   │
-├─────────────────────────────────────────────────────────────────┤
-│  • /search : Semantic search                                    │
-│  • /build-collections : Collection management                   │
-│  • /populate-collections : Data ingestion                       │
-│  • /chatbot/query : RAG + LLM generation                        │
-│  • Redis (optional) : TTL response cache                        │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### LangGraph Workflow
-
-```
-┌──────────┐
-│  START   │
-└────┬─────┘
-     │
-     ▼
-┌──────────────┐
-│   retrieve   │  ← Recherche sémantique dans Qdrant
-└──────┬───────┘
-       │
-       ▼
-┌──────────────────┐
-│ grade_documents  │  ← Évaluation de la pertinence
-└──────┬───────────┘
-       │
-       ├─────────────┐
-       │             │
-       ▼             ▼
-┌──────────┐   ┌──────────┐
-│ generate │   │ fallback │
-└────┬─────┘   └────┬─────┘
-  │              │
- (language          │
-  validator +       │
-   retry)      (bilingual)
-  │          fallback
-  └──────┬───────┘
-      │
-      ▼
-    ┌────────┐
-    │  END   │
-    └────────┘
-```
-
-Notes importantes :
-- Le nœud `generate` applique un validateur de langue. Si la sortie ne correspond pas à la langue de la question, une seconde génération « stricte » est tentée.
-- Le nœud `fallback` produit une réponse en français ou en anglais selon détection automatique, sans mélange de langues.
-- Les prompts sont chargés dynamiquement depuis `agents/prompts.md` via des marqueurs HTML (version 1.1.0) pour faciliter la maintenance.
-- Support extensible de `output_format` (text/json) pour réponses structurées.
+- **Python 3.11+** + `pip`
+- **Node.js 20+** + `npm`
+- **Docker & Docker Compose** (optional, pour local dev)
+- **Comptes** : OpenAI API, Qdrant Cloud, GitHub, Railway.app
 
 ---
 
-## 🛠️ Technologies
+## 📥 Installation locale
 
-### Stack Technique
-
-| Composant | Technologie | Version | Usage |
-|-----------|-------------|---------|-------|
-| **Orchestration** | LangGraph | Latest | Workflow management |
-| **LLM Framework** | LangChain | >=0.0.278 | RAG pipeline |
-| **LLM Provider** | OpenAI | Latest | Text generation |
-| **Vector DB** | Qdrant | >=1.14.2 | Semantic search |
-| **Embeddings** | Sentence-Transformers | >=2.2.2 | Text vectorization |
-| **API Framework** | FastAPI | Latest | REST API |
-| **Server** | Uvicorn | Latest | ASGI server |
-| **Validation** | Pydantic | Latest | Data models |
-| **Cache** | Redis (optionnel) | 7+ | Réponses RAG (TTL) |
-| **Data Processing** | Pandas, NumPy | Latest | Data manipulation |
-| **Environment** | Python-dotenv | Latest | Config management |
-| **Testing** | Pytest | Latest | Unit tests |
-| **UI Demo** | Gradio | >=3.14.0 | Interactive demo |
-
-### Modèles ML
-
-- **Embedding Model** : `all-mpnet-base-v2`
-  - Dimension : 768
-  - Max tokens : 384
-  - Languages : Multilingual (50+ languages)
-  - Performance : SOTA sur SBERT benchmarks
-
-- **LLM** : OpenAI GPT-3.5/4
-  - Task : Response generation
-  - Context window : 16K+ tokens
-
----
-
-## 📦 Installation
-
-### Prérequis
+### 1️⃣ Backend Setup
 
 ```bash
-Python >= 3.9
-Docker >= 20.10 (pour Qdrant local)
-Git
-```
-
-### Installation des dépendances
-
-```bash
-# Cloner le repository
+# Clone repo
 git clone https://github.com/gzz2v6tnxp-ctrl/genai-workflow-automate.git
 cd genai-workflow-automate
 
-# Créer un environnement virtuel
+# Python env
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
-.\venv\Scripts\activate   # Windows
+# Windows: venv\Scripts\activate
+# Linux/Mac: source venv/bin/activate
 
-# Installer les dépendances
+# Install deps
 pip install -r requirements.txt
 ```
 
-### Lancer Qdrant (Docker)
+**Créer `.env`** (à la racine) :
+```env
+OPENAI_API_KEY=sk-your-key-here
+OPENAI_MODEL=gpt-3.5-turbo
+OPENAI_TEMPERATURE=0.2
+OPENAI_TOP_P=0.9
+OPENAI_MAX_TOKENS=512
+
+QDRANT_CLOUD_URL=https://xxxx-xxxx.cloud.qdrant.io
+QDRANT_API_KEY=your-qdrant-api-key
+COLLECTION_NAME=knowledge_base_main
+
+REDIS_URL=redis://localhost:6379/0
+REDIS_TTL=600
+```
+
+**Lancer backend** :
+```bash
+uvicorn main:app --reload
+# ✅ http://localhost:8000
+# Swagger UI: http://localhost:8000/docs
+```
+
+### 2️⃣ Frontend Setup
 
 ```bash
-docker run -p 6333:6333 -p 6334:6334 \
-    -v $(pwd)/qdrant_storage:/qdrant/storage:z \
-    qdrant/qdrant:latest
+cd frontend
+npm install
+npm run dev
+# ✅ http://localhost:5173
 ```
+
+### 3️⃣ Tester l'intégration
+
+1. Ouvrir http://localhost:5173
+2. Envoyer : "What was Enron's exact revenue in 2000?"
+3. Sélectionner collection: `knowledge_base_main`, source: `enron`
+4. Vérifier réponse + sources
 
 ---
 
@@ -233,556 +96,349 @@ docker run -p 6333:6333 -p 6334:6334 \
 
 ### Variables d'environnement
 
-Créez un fichier `.env` à la racine du projet :
+| Var | Fichier | Exemple | Notes |
+|-----|---------|---------|-------|
+| `OPENAI_API_KEY` | `.env` | `sk-...` | **Requis** |
+| `QDRANT_CLOUD_URL` | `.env` | `https://xxxx.cloud.qdrant.io` | **Requis** |
+| `QDRANT_API_KEY` | `.env` | `api-key` | **Requis** |
+| `COLLECTION_NAME` | `.env` | `knowledge_base_main` | Défaut: `demo_public` |
+| `VITE_API_BASE` | `frontend/.env.production` | `https://backend.railway.app` | Prod only |
 
+### Prompts externalisés
+
+Tous les prompts dans `agents/prompts.md` (Markdown) :
+
+```markdown
+# System Prompt
+<!-- SYSTEM_PROMPT -->
+You are a helpful assistant...
+<!-- /SYSTEM_PROMPT -->
+
+# User Template
+<!-- USER_PROMPT -->
+Question: {question}
+<!-- /USER_PROMPT -->
+```
+
+Loader auto : `agents.graph.load_prompts()`.
+
+---
+
+## 🛠️ Développement
+
+### Structure
+
+```
+genai-workflow-automate/
+├── agents/
+│   ├── graph.py              # StateGraph principal
+│   ├── state.py              # TypedDict + types
+│   └── prompts.md            # Prompts Markdown
+├── router/
+│   ├── chatbot.py            # POST /api/v1/chatbot/query
+│   ├── retriever.py
+│   └── ingestion.py
+├── frontend/
+│   ├── src/
+│   │   ├── components/       # ChatPanel, SourceFilter, etc.
+│   │   ├── hooks/            # useChat (API)
+│   │   └── i18n/             # i18n
+│   └── vite.config.ts
+├── logs/
+│   ├── llm_responses.jsonl   # LLM output + citations
+│   └── metrics.jsonl         # Quality metrics
+├── main.py                   # FastAPI entry
+├── Dockerfile                # Backend
+├── docker-compose.yml        # Local compose
+├── railway.toml              # Railway config
+└── README.md
+```
+
+### Workflow LangGraph
+
+```
+Input: question, collection, sources_filter
+  ↓
+[retrieve] → Qdrant Cloud (apply filters)
+  ↓
+[grade_documents] → score top-k results
+  ↓
+[generate] → LLM generation + [citations]
+  ↓
+[evaluate_response] → quality gate
+  ├─ quality_pass=true → END (return)
+  ├─ escalate=true → [human_review] (escalade)
+  └─ escalate=false → [fallback] (generic response)
+```
+
+### Nodes
+
+- **retrieve** : Semantic search + filter by source
+- **grade** : Score documents (relevant/not_relevant)
+- **generate** : LLM + citation anchoring
+- **evaluate** : Quality gate (confidence, hallucination, cites_ok)
+- **human_review** : Escalation message
+- **fallback** : Generic fallback response
+
+---
+
+## 🚀 Déploiement hybride
+
+### Architecture
+
+```
+┌────────────────────────────────────────┐
+│  GitHub Pages (GRATUIT)                │
+│  Frontend React (dist/)                │
+│  https://gzz2v6tnxp-ctrl.github.io/... │
+└──────────────────┬─────────────────────┘
+                   │ CORS API calls
+                   ▼
+┌────────────────────────────────────────┐
+│  Railway.app ($5/mois)                 │
+│  Backend FastAPI + Docker              │
+│  https://backend-xxx.up.railway.app    │
+└──────────────────┬─────────────────────┘
+                   │ Vector DB API
+                   ▼
+┌────────────────────────────────────────┐
+│  Qdrant Cloud (Gratuit tier 1GB)        │
+│  Vecteur DB externe (prod)             │
+└────────────────────────────────────────┘
+```
+
+### Coûts
+
+| Service | Plan | Coût |
+|---------|------|------|
+| Frontend (GitHub Pages) | Free | **$0** ✅ |
+| Backend (Railway) | Free + $5 credit | **$0-5** 🎉 |
+| Qdrant (1GB tier) | Free | **$0** ✅ |
+| OpenAI API | Pay-as-you-go | **$1-5** |
+| **TOTAL** | | **$1-10/mois** |
+
+### Déploiement étape-par-étape
+
+#### 🔵 Frontend (GitHub Pages)
+
+**1. Push code**
+```bash
+git add .
+git commit -m "feat: hybrid deployment"
+git push origin main
+```
+
+**2. GitHub Actions déclenche** → `cd-frontend-pages.yml`
+- Build : `npm run build -- --base=/genai-workflow-automate/`
+- Deploy : artifact → GitHub Pages
+
+**3. Accès**
+```
+https://gzz2v6tnxp-ctrl.github.io/genai-workflow-automate/
+```
+
+#### 🔴 Backend (Railway)
+
+**1. Créer compte Railway** : https://railway.app
+
+**2. Connecter GitHub**
+- Dashboard → New Project → Deploy from GitHub
+- Sélectionner repo
+
+**3. Railway détecte**
+- `Dockerfile` (backend)
+- `railway.toml` (config)
+
+**4. Ajouter secrets** (Environment) :
+```
+OPENAI_API_KEY = sk-...
+QDRANT_CLOUD_URL = https://xxxx.cloud.qdrant.io
+QDRANT_API_KEY = api-key
+```
+
+**5. Déployer**
+- Manuelle : Railway UI → Deploy
+- Auto : push → GitHub Actions → Railway
+
+**6. Récupérer URL**
+```bash
+railway env
+# SERVICE_URL=https://backend-xxx.up.railway.app
+```
+
+**7. Update frontend**
+
+`frontend/.env.production` :
 ```env
-# Qdrant Local
-QDRANT_HOST=localhost
-QDRANT_PORT=6333
-
-# Qdrant Cloud (pour production)
-QDRANT_CLOUD_URL=https://your-cluster.aws.cloud.qdrant.io
-QDRANT_API_KEY=your-api-key-here
-
-# Embedding Configuration
-VECTOR_DIMENSION=768
-DEFAULT_EMBEDDING_MODEL=all-mpnet-base-v2
-
-# OpenAI API
-OPENAI_API_KEY=sk-...
-
-# Collection Names
-COLLECTION_NAME=genai_workflow_docs_test
-
-# Cache (optionnel)
-REDIS_URL=redis://localhost:6379/0
-REDIS_TTL=600
+VITE_API_BASE=https://backend-xxx.up.railway.app
 ```
 
-### Structure de Configuration
-
-```python
-# scripts/config.py
-- QDRANT_HOST / PORT : Qdrant local instance
-- QDRANT_CLOUD_URL / API_KEY : Production cluster
-- VECTOR_DIMENSION : Embedding dimension (768)
-- DEFAULT_EMBEDDING_MODEL : Model name
-- OPENAI_API_KEY : LLM API key
+Push :
+```bash
+git add frontend/.env.production
+git commit -m "chore: update API base URL"
+git push origin main
 ```
+
+**8. Tester**
+- Frontend : https://gzz2v6tnxp-ctrl.github.io/genai-workflow-automate/
+- DevTools → Network → vérifier POST vers Railway
+- Envoyer question → réponse depuis backend
 
 ---
 
-## 📊 Pipeline de Données
+## 🌐 API Endpoints
 
-### 1. Ingestion des Sources
+### `POST /api/v1/chatbot/query`
 
-```bash
-# Charger les données synthétiques
-python scripts/ingest/ingest_synth.py
-
-# Charger les plaintes CFPB
-python scripts/ingest/ingest_cfpb.py
-
-# Charger les emails Enron
-python scripts/ingest/ingest_enron_mail.py
-```
-
-### 2. Création des Collections
-
-```bash
-# Créer les collections Qdrant
-python scripts/vector_store/build_collection.py
-```
-
-**Collections créées** :
-- `demo_public` : 100 docs synthétiques (demo publique)
-- `knowledge_base_main` : ~5000 chunks (production)
-
-### 3. Génération des Embeddings et Population
-
-```bash
-# Générer les embeddings et peupler Qdrant
-python scripts/vector_store/populate_collection.py
-```
-
-**Process** :
-1. Chargement des documents depuis toutes les sources
-2. Chunking avec RecursiveCharacterTextSplitter (600 chars, overlap 100)
-3. Génération des embeddings (batch processing)
-4. Insertion par lots dans Qdrant (100 points/batch)
-
-### 4. Vérification
-
-```bash
-# Statistiques des collections
-python scripts/vector_store/retrieve.py --count
-```
-
----
-
-## 🚀 API Endpoints
-
-### Lancer l'API
-
-```bash
-# Mode développement
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-# Mode production
-uvicorn main:app --workers 4 --host 0.0.0.0 --port 8000
-```
-
-### Endpoints Disponibles
-
-#### 1. Recherche Sémantique
-
-## 🧠 Prompts & Génération
-
-Fichier : `agents/prompts.md` (Version 1.1.0)
-
-Points clés :
-- Markers HTML (`<!-- PROMPT:... -->`) pour extraction stable (system/user/fallback).
-- Few-shot intégrés FR & EN pour un style consistant.
-- Enforcement strict : même langue que la question, jamais de mélange (validator + retry).
-- Variable `{output_format}` (actuellement "text", extensible vers "json").
-- Fallback structuré prêt pour JSON (summary, next_actions, escalation, disclaimer).
-
-## ⚡ Cache & Performance
-
-Objectif : amortir le coût LLM et réduire la latence.
-
-Stratégie :
-- Niveau 1 : Redis (si `REDIS_URL` défini) avec TTL (`REDIS_TTL`).
-- Niveau 2 : Cache mémoire (`LocalTTLCache`) avec expiration et éviction simple.
-- Clé = SHA256(collection + output_format + question normalisée).
-
-Avantages :
-- Moins d'appels au LLM pour les requêtes répétées.
-- Réponses quasi instantanées sur cache hit.
-- Indépendant du contenu vectoriel.
-```http
-POST /api/retriever/search
-Content-Type: application/json
-
+**Request** :
+```json
 {
-  "query": "problème de carte de crédit refusée",
-  "collection_name": "knowledge_base_main",
-  "top_k": 5,
-  "score_threshold": 0.7,
-  "filters": {
-    "source": "cfpb_complaints"
-  }
+  "question": "What is Enron's revenue?",
+  "collection": "knowledge_base_main",
+  "sources_filter": ["enron"],
+  "output_format": "text"
 }
 ```
 
 **Response** :
 ```json
 {
-  "results": [
+  "question": "What is Enron's revenue?",
+  "answer": "Based on available documents...",
+  "language": "en",
+  "confidence": 0.82,
+  "sources": [
     {
-      "id": "uuid",
-      "score": 0.89,
-      "content": "Document content...",
-      "metadata": {
-        "source": "cfpb_complaints",
-        "product": "Credit card",
-        "issue": "Transaction declined"
-      }
+      "id": "doc-123",
+      "score": 0.91,
+      "source": "enron",
+      "lang": "en",
+      "type": "email"
     }
   ],
-  "total": 5
+  "mode": "generate",
+  "quality_pass": true,
+  "escalate": false,
+  "cites_ok": true
 }
 ```
 
-#### 2. Compter les Documents
+### Quality Gate Thresholds
 
-```http
-GET /api/retriever/count?collection_name=knowledge_base_main
-```
+- `confidence >= 0.35` → `quality_pass = true`
+- `confidence < 0.25` → `escalate = true`
+- `hallucination == true` → `escalate = true`
+- `cites_ok == false` → warning badge (frontend)
 
-#### 3. Récupérer un Document par ID
+---
 
-```http
-GET /api/retriever/documents/{document_id}?collection_name=knowledge_base_main
-```
+## 📊 Observabilité
 
-#### 4. Gestion des Collections
+### Logs
 
-```http
-POST /api/ingestion/build-collections
-POST /api/ingestion/populate-collections
-```
-
-#### 5. Chatbot (RAG + LLM + Cache)
-
-```http
-POST /api/v1/chatbot/query
-Content-Type: application/json
-
-{
-  "question": "unauthorized charge on my credit card",
-  "collection": "demo_public",
-  "output_format": "text"
-}
-```
-
-Exemple de réponse :
+#### `logs/llm_responses.jsonl`
 ```json
 {
-  "question": "unauthorized charge on my credit card",
-  "answer": "Take immediate action: 1) Freeze the card via fraud line...",
-  "language": "en",
-  "confidence": 0.716,
-  "sources": [
-    {"id": "123", "score": 0.716, "source": "synth", "lang": "en", "type": "ticket"}
-  ],
-  "mode": "generate"
+  "timestamp": "2025-11-13T10:30:00Z",
+  "question": "What is revenue?",
+  "generation": "Based on...",
+  "detected_ids": ["doc-123", "doc-456"],
+  "model": "gpt-3.5-turbo"
 }
 ```
 
-Cache :
-- Clé = SHA256(collection + output_format + question normalisée)
-- TTL par défaut : 600s (`REDIS_TTL`)
-- Fallback local en mémoire si Redis indisponible
-- Réduction de latence significative sur requêtes répétées
-
-Filtrage par source (collection knowledge_base_main) :
-
-```http
-POST /api/v1/chatbot/query
-Content-Type: application/json
-
+#### `logs/metrics.jsonl`
+```json
 {
-  "question": "chargeback timeline",
-  "collection": "knowledge_base_main",
-  "sources_filter": ["cfpb"],  // autorisés: "synth", "cfpb", "enron"
-  "output_format": "text"
+  "avg_score": 0.89,
+  "confidence": 0.82,
+  "cites_ok": true,
+  "overlap_ratio": 0.75,
+  "hallucination": false,
+  "quality_pass": true,
+  "escalate": false
 }
 ```
 
-### Documentation Interactive
-
-Accédez à la documentation Swagger :
-```
-http://localhost:8000/docs
-```
+#### `snapshots/for_review/*.json`
+Cas avec `quality_pass=false` (human review requis).
 
 ---
 
-## ☁️ Migration Cloud
+## 🆘 Troubleshooting
 
-### Processus de Migration
+### ❌ Frontend → Backend CORS error
 
-Consultez le guide détaillé : [`docs/MIGRATION_GUIDE.md`](docs/MIGRATION_GUIDE.md)
+**Symptôme** : "Access-Control-Allow-Origin" missing
 
-#### Méthode Automatique
+**Solutions** :
+1. Vérifier `ALLOWED_ORIGINS` dans `main.py`
+2. Vérifier `VITE_API_BASE` correct
+3. Redéployer backend
+
+### ❌ Backend won't start (Railway)
 
 ```bash
-# Migration complète (local → cloud)
-python scripts/vector_store/migrate_to_cloud.py
+railway logs --service backend --follow
 ```
 
-#### Méthode Manuelle
+**Causes** :
+- `PORT` env var → vérifier Dockerfile (`${PORT:-8000}`)
+- `OPENAI_API_KEY` vide → ajouter secret
+- Qdrant unreachable → vérifier URL/clé
+
+### ❌ Qdrant returns 0 documents
 
 ```bash
-# 1. Créer les snapshots
-python scripts/vector_store/create_snapshot.py
-
-# 2. Uploader vers le cloud
-python scripts/vector_store/restore_snapshot.py
+# Verify collection
+curl -X GET "https://your-qdrant-url/collections/knowledge_base_main" \
+  -H "api-key: your-key"
 ```
 
-### Snapshots
+**Cause** : Collection vide → ingest documents
 
-Les snapshots sont stockés dans `./snapshots/` :
+### ❌ LLM hallucination (quality_pass=false)
 
-```
-snapshots/
-├── demo_public-{timestamp}.snapshot
-└── knowledge_base_main-{timestamp}.snapshot
-```
-
-**Fonctionnalités** :
-- ✅ Backup automatique
-- ✅ Compression des données
-- ✅ Migration entre clusters
-- ✅ Restauration point-in-time
+1. ↓ Temperature : `0.2 → 0.1`
+2. Améliorer prompts dans `agents/prompts.md`
+3. Vérifier retrieval pertinent
 
 ---
 
-## 👨‍💻 Développement
+## 🔗 Resources
 
-### Structure du Projet
+- [LangGraph Docs](https://langchain-ai.github.io/langgraph/)
+- [Qdrant Docs](https://qdrant.tech/documentation/)
+- [Railway Docs](https://docs.railway.app/)
+- [FastAPI Docs](https://fastapi.tiangolo.com/)
+- [Vite Docs](https://vitejs.dev/)
 
-```
-genai-workflow-automate/
-├── agents/                    # LangGraph workflows
-│   ├── graph.py              # Graph definition
-│   └── state.py              # State management
-├── backend/                   # Backend logic (future)
-├── data/                      # Raw datasets
-│   ├── complaints.csv/
-│   ├── enron_mail_20150507/
-│   └── synth/
-├── docs/                      # Documentation
-│   └── MIGRATION_GUIDE.md
-├── frontend/                  # UI (future)
-├── infra/                     # Infrastructure
-│   └── Dockerfile
-├── notebooks/                 # Jupyter notebooks
-│   └── analyse_data.ipynb
-├── router/                    # FastAPI routers
-│   ├── ingestion.py
-│   └── retriever.py
-├── scripts/                   # Data processing scripts
-│   ├── chunking.py
-│   ├── config.py
-│   ├── embed.py
-│   ├── ingest/
-│   │   ├── ingest_cfpb.py
-│   │   ├── ingest_enron_mail.py
-│   │   └── ingest_synth.py
-│   └── vector_store/
-│       ├── build_collection.py
-│       ├── create_snapshot.py
-│       ├── migrate_to_cloud.py
-│       ├── populate_collection.py
-│       ├── restore_snapshot.py
-│       └── retrieve.py
-├── snapshots/                 # Qdrant snapshots
-├── main.py                    # FastAPI app entry point
-├── requirements.txt
-└── README.md
-```
+---
 
-### Workflow de Développement
+## 📝 License
+
+MIT
+
+---
+
+## 👤 Author
+
+**GenAI Workflow Automate** - RAG pipeline for customer support automation
+
+- **Demo** : https://gzz2v6tnxp-ctrl.github.io/genai-workflow-automate/
+- **Backend** : https://backend-xxx.up.railway.app/ (après déploiement)
+
+---
+
+## 🤝 Contributions
 
 ```bash
-# 1. Créer une branche feature
-git checkout -b feature/nouvelle-fonctionnalite
-
-# 2. Développer et tester
-pytest tests/
-
-# 3. Formater le code (optionnel)
-black .
-pre-commit run --all-files
-
-# 4. Commit et push
-git add .
-git commit -m "feat: description de la fonctionnalité"
-git push origin feature/nouvelle-fonctionnalite
-
-# 5. Créer une Pull Request
+# Feature branch
+git checkout -b feature/your-feature
+git commit -am "feat: your feature"
+git push origin feature/your-feature
+# Créer PR sur GitHub
 ```
 
-### Tests
-
-```bash
-# Lancer tous les tests
-pytest
-
-# Tests avec couverture
-pytest --cov=scripts --cov-report=html
-
-# Tests spécifiques
-pytest tests/test_retrieval.py
-```
-
-### Linting et Formatage
-
-```bash
-# Formater le code
-black scripts/ router/ agents/
-
-# Vérifier la qualité
-flake8 scripts/ router/ agents/
-```
-
----
-
-## 📊 Data & Licences
-
-### Sources de Données
-
-#### 1. CFPB Consumer Complaint Database
-
-- **Source** : [Consumer Financial Protection Bureau](https://www.consumerfinance.gov/data-research/consumer-complaints/)
-- **Licence** : Domaine public (US federal data)
-- **Description** : Base de données de plaintes clients dans le secteur financier américain
-- **Volume** : 10,000 enregistrements (subset)
-- **Champs utilisés** :
-  - `Consumer complaint narrative` : Description textuelle de la plainte
-  - `Product` : Catégorie de produit financier
-  - `Issue` : Type de problème
-  - `Company response to consumer` : Réponse de l'entreprise
-- **Modifications** : Échantillonnage aléatoire, nettoyage des données sensibles, anonymisation
-- **Citation** : 
-  ```
-  Consumer Financial Protection Bureau. Consumer Complaint Database. 
-  Retrieved from https://www.consumerfinance.gov/data-research/consumer-complaints/
-  ```
-
-#### 2. Enron Email Dataset
-
-- **Source** : [CMU Enron Email Dataset](https://www.cs.cmu.edu/~enron/)
-- **Licence** : Publié pour la recherche (public domain equivalent)
-- **Description** : Corpus d'emails professionnels de la société Enron
-- **Volume** : Subset de plusieurs milliers d'emails
-- **Champs utilisés** :
-  - `Subject` : Objet de l'email
-  - `Body` : Corps du message
-  - `From/To` : Expéditeur/Destinataire (anonymisés)
-  - `Date` : Date d'envoi
-- **Modifications** : Extraction de sous-ensembles pertinents, nettoyage, anonymisation des identités
-- **Citation** :
-  ```
-  Klimt, B., & Yang, Y. (2004). The Enron Corpus: A New Dataset for Email Classification Research. 
-  European Conference on Machine Learning (ECML).
-  ```
-
-#### 3. Synthetic Financial Documents
-
-- **Source** : Générés spécifiquement pour ce projet
-- **Licence** : MIT (open source)
-- **Description** : Documents synthétiques simulant des tickets clients et documentation financière
-- **Volume** : 100 documents
-- **Langues** : Français, Anglais
-- **Champs** :
-  - `content` : Contenu textuel du document
-  - `metadata` : Métadonnées structurées (type, langue, catégorie)
-- **Génération** : Template-based avec variations aléatoires
-- **Format** : JSONL
-
-### Considérations Éthiques et Légales
-
-#### Confidentialité
-
-- ✅ Toutes les données personnelles identifiables (PII) ont été anonymisées
-- ✅ Aucune information bancaire réelle n'est incluse
-- ✅ Les emails Enron utilisent des données déjà publiques et anonymisées
-
-#### Usage Autorisé
-
-Ce projet est destiné à :
-- 📚 Recherche et développement en NLP/ML
-- 🎓 Éducation et formation
-- 🔬 Démonstration de concepts techniques
-- 💼 Portfolio professionnel
-
-#### Restrictions
-
-❌ **Ne pas utiliser** pour :
-- Production commerciale sans vérification des licences
-- Traitement de données clients réelles sans consentement
-- Prise de décisions financières automatisées sans supervision humaine
-
-### Conformité RGPD
-
-Pour une utilisation en production avec données réelles :
-
-1. **Consentement** : Obtenir le consentement explicite des utilisateurs
-2. **Minimisation** : Collecter uniquement les données nécessaires
-3. **Anonymisation** : Appliquer des techniques d'anonymisation robustes
-4. **Droit à l'oubli** : Implémenter des mécanismes de suppression de données
-5. **Sécurité** : Chiffrement des données sensibles (at rest + in transit)
-
-### Datasets Complémentaires (Recommandations)
-
-Pour étendre le système :
-
-- **Financial QA** : [FiQA Dataset](https://sites.google.com/view/fiqa/) (CC BY-SA)
-- **Banking77** : [Banking Intent Dataset](https://arxiv.org/abs/2003.04807) (CC BY 4.0)
-- **FinBERT** : [Financial Domain Corpus](https://huggingface.co/ProsusAI/finbert) (Apache 2.0)
-
----
-
-## 📚 Références
-
-### Documentation Technique
-
-- [Qdrant Documentation](https://qdrant.tech/documentation/)
-- [LangChain Documentation](https://python.langchain.com/)
-- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
-- [Sentence-Transformers Documentation](https://www.sbert.net/)
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-
-### Articles de Recherche
-
-1. **RAG Architecture**
-   - Lewis, P., et al. (2020). "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks." NeurIPS.
-
-2. **Sentence Embeddings**
-   - Reimers, N., & Gurevych, I. (2019). "Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks." EMNLP.
-
-3. **Vector Databases**
-   - Johnson, J., Douze, M., & Jégou, H. (2019). "Billion-scale similarity search with GPUs." IEEE Transactions on Big Data.
-
-### Tutoriels et Guides
-
-- [RAG Tutorial by LangChain](https://python.langchain.com/docs/use_cases/question_answering/)
-- [Qdrant Snapshot Migration](https://qdrant.tech/documentation/database-tutorials/create-snapshot/)
-- [Building Production-Ready RAG Systems](https://www.pinecone.io/learn/retrieval-augmented-generation/)
-
----
-
-## 📄 Licence
-
-Ce projet est sous licence **MIT**.
-
-```
-MIT License
-
-Copyright (c) 2025 [Votre Nom]
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-[Texte complet de la licence MIT]
-```
-
----
-
-## 🤝 Contribution
-
-Les contributions sont bienvenues ! Pour contribuer :
-
-1. Fork le projet
-2. Créer une branche feature (`git checkout -b feature/AmazingFeature`)
-3. Commit les changements (`git commit -m 'Add some AmazingFeature'`)
-4. Push vers la branche (`git push origin feature/AmazingFeature`)
-5. Ouvrir une Pull Request
-
-### Guidelines
-
-- Suivre les conventions PEP 8
-- Ajouter des tests pour les nouvelles fonctionnalités
-- Documenter les fonctions avec docstrings
-- Mettre à jour le README si nécessaire
-
----
-
-## 📧 Contact
-
-**Auteur** : [Votre Nom]  
-**Email** : votre.email@example.com  
-**LinkedIn** : [Votre profil LinkedIn]  
-**GitHub** : [@gzz2v6tnxp-ctrl](https://github.com/gzz2v6tnxp-ctrl)
-
----
-
-## 🙏 Remerciements
-
-- [LangChain](https://github.com/langchain-ai/langchain) pour le framework RAG
-- [Qdrant](https://github.com/qdrant/qdrant) pour la base vectorielle performante
-- [Sentence-Transformers](https://github.com/UKPLab/sentence-transformers) pour les modèles d'embedding
-- [OpenAI](https://openai.com/) pour les capacités LLM
-- [CFPB](https://www.consumerfinance.gov/) et [CMU](https://www.cs.cmu.edu/) pour les datasets publics
-
----
-
-**⭐ Si ce projet vous a été utile, n'hésitez pas à lui donner une étoile sur GitHub !**
+Merci ! 🎉

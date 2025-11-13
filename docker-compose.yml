@@ -1,0 +1,39 @@
+# Déploiement local - Backend uniquement (Frontend sur GitHub Pages)
+# Qdrant Cloud utilisé en production (configuré via env vars)
+
+version: '3.9'
+
+services:
+  # Backend FastAPI - compatible Railway + local dev
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # OpenAI
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=gpt-3.5-turbo
+      - OPENAI_TEMPERATURE=0.2
+      - OPENAI_TOP_P=0.9
+      - OPENAI_MAX_TOKENS=512
+      
+      # Qdrant Cloud (production - externe)
+      - QDRANT_CLOUD_URL=${QDRANT_CLOUD_URL}
+      - QDRANT_API_KEY=${QDRANT_API_KEY}
+      - COLLECTION_NAME=knowledge_base_main
+      
+      # Redis (optionnel, pour cache)
+      - REDIS_URL=${REDIS_URL:-}
+      - REDIS_TTL=600
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  default:
+    name: genai-network
