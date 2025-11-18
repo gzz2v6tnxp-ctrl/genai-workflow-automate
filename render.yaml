@@ -1,0 +1,42 @@
+services:
+  # Backend FastAPI service
+  - type: web
+    name: genai-workflow-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      # OpenAI Configuration
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-3.5-turbo
+      - key: OPENAI_TEMPERATURE
+        value: 0.2
+      - key: OPENAI_TOP_P
+        value: 0.9
+      - key: OPENAI_MAX_TOKENS
+        value: 512
+      
+      # Qdrant Cloud Configuration
+      - key: QDRANT_CLOUD_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: COLLECTION_NAME
+        value: knowledge_base_main
+      
+      # Redis (optional)
+      - key: REDIS_URL
+        sync: false
+      - key: REDIS_TTL
+        value: 600
+      
+      # Port (Render automatically sets this)
+      - key: PORT
+        value: 8000
+    
+    healthCheckPath: /
+    
+    # Auto-deploy on push to main branch
+    autoDeploy: true
