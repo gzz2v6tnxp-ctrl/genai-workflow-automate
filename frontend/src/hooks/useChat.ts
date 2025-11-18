@@ -3,7 +3,18 @@ import axios from 'axios'
 import type { Lang } from '../i18n/translations'
 
 // Déterminer l'URL API selon l'environnement
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+// En production (GitHub Pages), utiliser l'URL Render si VITE_API_BASE n'est pas défini
+const isProduction = window.location.hostname !== 'localhost'
+const productionFallback = 'https://genai-workflow-backend.onrender.com'
+const API_BASE = import.meta.env.VITE_API_BASE || (isProduction ? productionFallback : 'http://localhost:8000')
+
+// Debug: log de l'URL API utilisée
+console.log('API Configuration:', {
+  hostname: window.location.hostname,
+  isProduction,
+  VITE_API_BASE: import.meta.env.VITE_API_BASE,
+  finalAPIBase: API_BASE
+})
 
 export interface ChatMessage {
   id: string
