@@ -3,11 +3,7 @@ import axios from 'axios'
 import type { Lang } from '../i18n/translations'
 
 // Déterminer l'URL API selon l'environnement
-const API_BASE = import.meta.env.VITE_API_BASE || 
-  (import.meta.env.MODE === 'production' 
-    ? '' // En prod, utiliser Railway backend URL
-    : 'http://localhost:8000'
-  )
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
 export interface ChatMessage {
   id: string

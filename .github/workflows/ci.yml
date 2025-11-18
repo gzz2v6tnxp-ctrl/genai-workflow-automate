@@ -129,6 +129,8 @@ jobs:
         run: npm ci
 
       - name: Build for production
+        env:
+          VITE_API_BASE: ${{ secrets.RENDER_BACKEND_URL }}
         run: npm run build
 
       - name: Setup Pages
