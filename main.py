@@ -20,6 +20,7 @@ ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",  # Localhost alt
     "https://gzz2v6tnxp-ctrl.github.io",  # GitHub Pages root
     "https://gzz2v6tnxp-ctrl.github.io/genai-workflow-automate",  # GitHub Pages repo path
+    "https://genai-workflow-backend.onrender.com",
 ]
 
 # Autoriser des origins supplémentaires via env var (pour Railway + custom domains)
