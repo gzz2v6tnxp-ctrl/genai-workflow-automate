@@ -315,7 +315,10 @@ def evaluate_response(state):
         "quality_pass": quality_pass,
         "similarity_score": similarity_score,
         "confidence_score": confidence_score,
-        "escalate": escalate
+        "escalate": escalate,
+        "cites_ok": cites_ok,
+        "overlap_ratio": overlap_ratio,
+        "hallucination": hallucination
     }
 
 

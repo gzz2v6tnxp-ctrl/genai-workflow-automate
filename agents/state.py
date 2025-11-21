@@ -27,3 +27,9 @@ class GraphState(TypedDict, total=False):
     sources_filter: List[str]
     response_lang: str
     confidence: float
+    similarity_score: float
+    confidence_score: float
+    quality_pass: bool
+    escalate: bool
+    overlap_ratio: float
+    cites_ok: bool

@@ -22,7 +22,7 @@ export const MetricsDashboard: React.FC<Props> = ({ lang, messages, metrics }) =
   }
 
   const avgConfidence = totalMessages
-    ? messages.reduce((sum, m) => sum + (m.confidence || 0), 0) / totalMessages
+    ? messages.reduce((sum, m) => sum + (m.confidence_score || 0), 0) / totalMessages
     : 0
 
   const messagesWithLatency = messages.filter(m => typeof m.latencyMs === 'number')

@@ -1,0 +1,61 @@
+{
+  "id": "601e4f0903de4bff8082f344999082d9",
+  "timestamp": "2025-11-21T16:53:59.105368",
+  "question": "Ma carte bancaire est bloquée, que dois-je faire ?",
+  "documents": [
+    "[Document 1] (Score: 0.575)\nProblème de prélèvement: activité suspecte\n\nBonjour,\n\nJ'ai constaté un problème : activité suspecte sur mon compte [ACCOUNT]. La référence de transaction est [NUMBER] et a eu lieu le 2025-08-26. Merci de m'indiquer la marche à suivre et de confirmer le processus de remboursement.\n\nClient : Thibaut Leclercq - Email : [email]\n",
+    "[Document 2] (Score: 0.566)\nProblème de prélèvement: activité suspecte\n\nBonjour,\n\nJ'ai constaté un problème : activité suspecte sur mon compte [ACCOUNT]. La référence de transaction est [NUMBER] et a eu lieu le 2025-10-07. Merci de m'indiquer la marche à suivre et de confirmer le processus de remboursement.\n\nClient : Emmanuel Duhamel - Email : [email]\n",
+    "[Document 3] (Score: 0.555)\nProblème de prélèvement: prélèvement échoué\n\nBonjour,\n\nJ'ai constaté un problème : prélèvement échoué sur mon compte [ACCOUNT]. La référence de transaction est [NUMBER] et a eu lieu le 2025-08-24. Merci de m'indiquer la marche à suivre et de confirmer le processus de remboursement.\n\nClient : Patrick Morin Le Mercier - Email : [email]\n",
+    "[Document 4] (Score: 0.551)\nProblème de prélèvement: prélèvement échoué\n\nBonjour,\n\nJ'ai constaté un problème : prélèvement échoué sur mon compte [ACCOUNT]. La référence de transaction est [NUMBER] et a eu lieu le 2025-09-24. Merci de m'indiquer la marche à suivre et de confirmer le processus de remboursement.\n\nClient : Louise Bonnet - Email : [email]\n",
+    "[Document 5] (Score: 0.546)\nProblème de prélèvement: prélèvement échoué\n\nBonjour,\n\nJ'ai constaté un problème : prélèvement échoué sur mon compte [ACCOUNT]. La référence de transaction est [NUMBER] et a eu lieu le 2025-09-19. Merci de m'indiquer la marche à suivre et de confirmer le processus de remboursement.\n\nClient : Gilbert Girard - Email : [email]\n"
+  ],
+  "sources": [
+    {
+      "id": "dcf74312-f362-42fd-a496-ceda69ac2bbd",
+      "score": 0.57546365,
+      "source": "synth",
+      "lang": "fr",
+      "type": "ticket_support"
+    },
+    {
+      "id": "c655ffd9-9f88-4202-abe5-d19069f43eb4",
+      "score": 0.5658909,
+      "source": "synth",
+      "lang": "fr",
+      "type": "ticket_support"
+    },
+    {
+      "id": "fe40ee74-2244-41c1-9ca3-a9001fe6ee1c",
+      "score": 0.55461735,
+      "source": "synth",
+      "lang": "fr",
+      "type": "ticket_support"
+    },
+    {
+      "id": "98b73320-2ad5-4025-a52e-211bc41ece01",
+      "score": 0.55097497,
+      "source": "synth",
+      "lang": "fr",
+      "type": "ticket_support"
+    },
+    {
+      "id": "fbc316c9-2c13-4b0c-8304-f3ebe2951c52",
+      "score": 0.54554904,
+      "source": "synth",
+      "lang": "fr",
+      "type": "ticket_support"
+    }
+  ],
+  "generation": "Votre carte peut être bloquée pour les raisons suivantes :\n- Code PIN erroné\n- Suspicion de fraude\n- Solde insuffisant\n\nVoici ce que vous pouvez faire :\n1. Vérifiez votre solde.\n2. Contactez le service client au 01 XX XX XX XX pour vérification.\n3. En cas de fraude, faites opposition immédiatement au 09 XX XX XX XX.\n4. Un conseiller pourra réactiver votre carte après contrôle.",
+  "metrics": {
+    "timestamp": "2025-11-21T16:53:59.101156",
+    "question": "Ma carte bancaire est bloquée, que dois-je faire ?",
+    "similarity_score": 0.558,
+    "confidence_score": 0.447,
+    "cites_ok": false,
+    "hallucination": false,
+    "quality_pass": false,
+    "escalate": false,
+    "num_sources": 5
+  }
+}

@@ -10,117 +10,95 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
 
 from scripts import config
-from scripts.embed import generate_embeddings
-from langchain_core.documents import Document
-
+from qdrant_client import QdrantClient
+from langchain_openai import OpenAIEmbeddings  # ✅ Remplacement de SentenceTransformer
 
 class DocumentRetriever:
-    """
-    Classe pour gérer la récupération de documents pertinents depuis Qdrant.
-    """
-
-    def __init__(
-        self,
-        collection_name: str,
-        use_cloud: bool = True,
-        host: Optional[str] = None,
-        port: Optional[int] = None,
-        cloud_url: Optional[str] = None,
-        api_key: Optional[str] = None,
-    ):
-        """
-        Initialise le récupérateur de documents.
-
-        Args:
-            collection_name: Nom de la collection Qdrant à interroger.
-            use_cloud: Si True, utilise Qdrant Cloud, sinon utilise l'instance locale.
-            host: Hôte Qdrant local (par défaut depuis config).
-            port: Port Qdrant local (par défaut depuis config).
-            cloud_url: URL du cluster Qdrant Cloud (par défaut depuis config).
-            api_key: Clé API Qdrant Cloud (par défaut depuis config).
-        """
+    def __init__(self, collection_name: str = "knowledge_base_main", 
+                 use_cloud: bool = True,
+                 host: str = None, port: int = None, 
+                 cloud_url: str = None, api_key: str = None):
         self.collection_name = collection_name
         self.use_cloud = use_cloud
         
+        # Client Qdrant
         if use_cloud:
-            # Connexion au cluster Qdrant Cloud
             self.client = QdrantClient(
                 url=cloud_url or config.QDRANT_CLOUD_URL,
                 api_key=api_key or config.QDRANT_API_KEY,
             )
             print(f"✅ Connecté à Qdrant Cloud : {cloud_url or config.QDRANT_CLOUD_URL}")
         else:
-            # Connexion à l'instance locale
             self.client = QdrantClient(
                 host=host or config.QDRANT_HOST,
-                port=port or config.QDRANT_PORT,
+                port=port or config.QDRANT_PORT
             )
             print(f"✅ Connecté à Qdrant Local : {host or config.QDRANT_HOST}:{port or config.QDRANT_PORT}")
+
+        # ✅ Initialisation du modèle OpenAI pour la requête (1536 dims)
+        self.embedding_model = OpenAIEmbeddings(
+            model=config.DEFAULT_EMBEDDING_MODEL, # "text-embedding-3-small"
+            api_key=config.OPENAI_API_KEY
+        )
         
         print(f"📚 Collection active : '{self.collection_name}'")
 
-    def retrieve(
-        self,
-        query: str,
-        top_k: int = 5,
-        score_threshold: Optional[float] = None,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+    def retrieve(self, query: str, top_k: int = 5, score_threshold: float = None, filters: Dict = None) -> List[Dict[str, Any]]:
         """
-        Récupère les documents les plus pertinents pour une requête donnée.
-
-        Args:
-            query: La requête textuelle de l'utilisateur.
-            top_k: Nombre de documents à récupérer.
-            score_threshold: Score de similarité minimum (0-1). Les résultats en dessous sont exclus.
-            filters: Filtres de métadonnées optionnels (ex: {"source": "synthetic"}).
-
-        Returns:
-            Liste de dictionnaires contenant les documents et leurs scores.
+        Vectorise la question avec OpenAI et cherche dans Qdrant.
         """
         print(f"\n--- Recherche de documents pour la requête : '{query}' ---")
 
-        # 1. Générer l'embedding de la requête
-        query_doc = Document(page_content=query)
-        query_embedding = generate_embeddings([query_doc])[0]
+        # 1. Vectoriser la question
+        try:
+            query_vector = self.embedding_model.embed_query(query)
+        except Exception as e:
+            print(f"❌ Erreur embedding OpenAI: {e}")
+            return []
 
-        # 2. Construire le filtre Qdrant si nécessaire
+        # 2. Construire les filtres Qdrant (si présents)
         query_filter = None
         if filters:
-            conditions = []
+            from qdrant_client import models
+            must_conditions = []
             for key, value in filters.items():
-                # Enforce OR on multiple values using MatchAny (strict)
+                # Gestion des listes (OR)
                 if isinstance(value, (list, tuple, set)):
-                    conditions.append(
-                        FieldCondition(key=key, match=MatchAny(any=list(value)))
+                    must_conditions.append(
+                        models.FieldCondition(
+                            key=key, # key est déjà metadata.source ou source selon ingestion
+                            match=models.MatchAny(any=list(value))
+                        )
                     )
                 else:
-                    conditions.append(
-                        FieldCondition(key=key, match=MatchValue(value=value))
+                    must_conditions.append(
+                        models.FieldCondition(
+                            key=key,
+                            match=models.MatchValue(value=value)
+                        )
                     )
-            query_filter = Filter(must=conditions)
+            if must_conditions:
+                query_filter = models.Filter(must=must_conditions)
 
-        # 3. Rechercher dans Qdrant
-        search_results = self.client.query_points(
+        # 3. Recherche
+        search_result = self.client.search(
             collection_name=self.collection_name,
-            query=query_embedding,
-            limit=top_k,
+            query_vector=query_vector,
             query_filter=query_filter,
-            score_threshold=score_threshold,
-            with_payload=True,
-            with_vectors=False,
+            limit=top_k,
+            score_threshold=score_threshold
         )
 
-        # 4. Formater les résultats
+        # 4. Formatage
         results = []
-        for hit in search_results.points:
+        for hit in search_result:
             results.append({
                 "id": hit.id,
                 "score": hit.score,
                 "content": hit.payload.get("page_content", ""),
                 "metadata": {k: v for k, v in hit.payload.items() if k != "page_content"},
             })
-
+        
         print(f"Trouvé {len(results)} document(s) pertinent(s).")
         return results
 
