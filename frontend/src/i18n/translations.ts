@@ -17,10 +17,33 @@ const fr = {
   filtersApplied: 'Filtre appliqué',
   loading: 'Chargement...',
   error: 'Erreur lors de la requête',
-  footer: '© 2025 GenAI Workflow Automation- RAVELOJAONA Irinasoa Sitraka L.'
-  ,
+  footer: '© 2025 GenAI Workflow Automation- RAVELOJAONA Irinasoa Sitraka L.',
   showSamples: 'Afficher exemples',
-  hideSamples: 'Masquer exemples'
+  hideSamples: 'Masquer exemples',
+  heroTitle: 'RAG bancaire avec métriques en temps réel',
+  heroSubtitle:
+    'Testez le pipeline de retrieval, suivez les métriques Qdrant et le monitoring qualité en direct.',
+  metricsTitle: 'Métriques RAG',
+  metricsEmpty: 'Lance une requête pour voir les métriques.',
+  metricTotalRequests: 'Requêtes',
+  metricAvgConfidence: 'Confiance moyenne',
+  metricAvgLatency: 'Latence moyenne',
+  metricHallucinationRate: 'Hallucinations',
+  metricCollections: 'Collections',
+  metricSources: 'Sources',
+  metricsFootnote: 'Métriques calculées côté frontend à partir des dernières réponses.',
+  systemStatusTitle: 'Statut système',
+  statusHealthy: 'Système opérationnel',
+  statusWarning: 'Vérifier la qualité',
+  statusError: 'Erreurs récentes',
+  statusErrors: 'Erreurs',
+  statusQualityIssues: 'Qualité',
+  statusHallucinations: 'Hallucinations',
+  statusDocsPerAnswer: 'Docs / réponse',
+  statusLastSuccess: 'Dernier succès',
+  statusLastError: 'Dernière erreur',
+  statusRecentErrors: 'Erreurs récentes',
+  statusNoData: 'Aucune donnée à afficher pour le moment.'
 }
 
 const en = {
@@ -42,7 +65,32 @@ const en = {
   error: 'Error during request',
   footer: '© 2025 GenAI Workflow Automation - RAVELOJAONA Irinasoa Sitraka L.',
   showSamples: 'Show samples',
-  hideSamples: 'Hide samples'
+  hideSamples: 'Hide samples',
+  heroTitle: 'Banking RAG with live metrics',
+  heroSubtitle:
+    'Exercise the retrieval pipeline, watch Qdrant metrics and quality monitoring in real time.',
+  metricsTitle: 'RAG metrics',
+  metricsEmpty: 'Run a query to see live metrics.',
+  metricTotalRequests: 'Requests',
+  metricAvgConfidence: 'Average confidence',
+  metricAvgLatency: 'Average latency',
+  metricHallucinationRate: 'Hallucinations',
+  metricCollections: 'Collections',
+  metricSources: 'Sources',
+  metricsFootnote: 'Metrics are computed on the frontend from the latest answers.',
+  systemStatusTitle: 'System status',
+  statusHealthy: 'System healthy',
+  statusWarning: 'Check answer quality',
+  statusError: 'Recent errors',
+  statusErrors: 'Errors',
+  statusQualityIssues: 'Quality',
+  statusHallucinations: 'Hallucinations',
+  statusDocsPerAnswer: 'Docs / answer',
+  statusLastSuccess: 'Last success',
+  statusLastError: 'Last error',
+  statusRecentErrors: 'Recent errors',
+  statusNoData: 'Nothing to display yet.'
 }
 
-export const t = (lang: Lang, key: keyof typeof en) => (lang === 'fr' ? (fr as any)[key] : (en as any)[key])
+export const t = (lang: Lang, key: keyof typeof en) =>
+  (lang === 'fr' ? (fr as any)[key] : (en as any)[key])

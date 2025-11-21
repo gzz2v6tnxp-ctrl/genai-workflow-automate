@@ -6,7 +6,8 @@ import type { Lang } from '../i18n/translations'
 // En production (GitHub Pages), utiliser l'URL Render si VITE_API_BASE n'est pas défini
 const isProduction = window.location.hostname !== 'localhost'
 const productionFallback = 'https://genai-workflow-backend.onrender.com'
-const API_BASE = import.meta.env.VITE_API_BASE || (isProduction ? productionFallback : 'http://localhost:8000')
+const API_BASE =
+  import.meta.env.VITE_API_BASE || (isProduction ? productionFallback : 'http://localhost:8000')
 
 // Debug: log de l'URL API utilisée
 console.log('API Configuration:', {
@@ -35,6 +36,9 @@ export interface ChatMessage {
   cites_ok?: boolean | null
   overlap_ratio?: number | null
   hallucination?: boolean | null
+  collection: string
+  sourcesFilter?: string[] | null
+  latencyMs?: number | null
   createdAt: number
 }
 
@@ -43,14 +47,35 @@ interface SendOptions {
   sourcesFilter: string[] | null
 }
 
+export interface ChatMetrics {
+  requestCount: number
+  errorCount: number
+  lastError: string | null
+  lastErrorAt: number | null
+  lastSuccessAt: number | null
+  lastLatencyMs: number | null
+  errorLog: string[]
+}
+
 export function useChat(lang: Lang) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [requestCount, setRequestCount] = useState(0)
+  const [errorCount, setErrorCount] = useState(0)
+  const [lastError, setLastError] = useState<string | null>(null)
+  const [lastErrorAt, setLastErrorAt] = useState<number | null>(null)
+  const [lastSuccessAt, setLastSuccessAt] = useState<number | null>(null)
+  const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null)
+  const [errorLog, setErrorLog] = useState<string[]>([])
+
   async function send(question: string, opts: SendOptions) {
     setLoading(true)
     setError(null)
+    setRequestCount(c => c + 1)
+    const start = performance.now()
+
     try {
       const payload: any = { question, collection: opts.collection }
       if (opts.sourcesFilter && opts.sourcesFilter.length) {
@@ -58,6 +83,8 @@ export function useChat(lang: Lang) {
       }
       const res = await axios.post(`${API_BASE}/api/v1/chatbot/query`, payload)
       const data = res.data
+      const latency = performance.now() - start
+
       const msg: ChatMessage = {
         id: crypto.randomUUID(),
         question,
@@ -70,15 +97,38 @@ export function useChat(lang: Lang) {
         cites_ok: data.cites_ok ?? null,
         overlap_ratio: data.overlap_ratio ?? null,
         hallucination: data.hallucination ?? null,
+        collection: opts.collection,
+        sourcesFilter: opts.sourcesFilter,
+        latencyMs: latency,
         createdAt: Date.now()
       }
       setMessages(m => [msg, ...m])
+      setLastLatencyMs(latency)
+      setLastSuccessAt(Date.now())
     } catch (e: any) {
-      setError(e?.response?.data?.detail || e.message)
+      const message = e?.response?.data?.detail || e.message || 'Unknown error'
+      setError(message)
+      setErrorCount(c => c + 1)
+      setLastError(message)
+      setLastErrorAt(Date.now())
+      setErrorLog(prev => {
+        const next = [...prev, `${new Date().toLocaleTimeString()} - ${message}`]
+        return next.slice(-5)
+      })
     } finally {
       setLoading(false)
     }
   }
 
-  return { messages, send, loading, error }
+  const metrics: ChatMetrics = {
+    requestCount,
+    errorCount,
+    lastError,
+    lastErrorAt,
+    lastSuccessAt,
+    lastLatencyMs,
+    errorLog
+  }
+
+  return { messages, send, loading, error, metrics }
 }

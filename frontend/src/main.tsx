@@ -5,11 +5,7 @@ import type { Lang } from './i18n/translations'
 
 function RootApp() {
   const [lang, setLang] = useState<Lang>('fr')
-  return (
-    <div className="container">
-      <ChatPanel lang={lang} onLangChange={setLang} />
-    </div>
-  )
+  return <ChatPanel lang={lang} onLangChange={setLang} />
 }
 
 const root = createRoot(document.getElementById('root')!)

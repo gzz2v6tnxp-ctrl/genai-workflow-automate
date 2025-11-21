@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
-import { t, Lang } from '../i18n/translations'
+import { t, type Lang } from '../i18n/translations'
 import { useChat } from '../hooks/useChat'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { SourceFilter } from './SourceFilter'
 import { SampleQueries } from './SampleQueries'
+import { MetricsDashboard } from './MetricsDashboard'
+import { SystemStatus } from './SystemStatus'
 
 interface Props {
   lang: Lang
@@ -11,49 +13,47 @@ interface Props {
 }
 
 export const ChatPanel: React.FC<Props> = ({ lang, onLangChange }) => {
-  const { messages, send, loading, error } = useChat(lang)
+  const { messages, send, loading, error, metrics } = useChat(lang)
   const [question, setQuestion] = useState('')
-  const [collection, setCollection] = useState<'demo_public' | 'knowledge_base_main'>('demo_public')
+  const [collection, setCollection] =
+    useState<'demo_public' | 'knowledge_base_main'>('demo_public')
   const [sourcesFilter, setSourcesFilter] = useState<string[]>([])
   const [showSamples, setShowSamples] = useState(false)
 
   function toggleSource(key: string) {
-    setSourcesFilter(curr => curr.includes(key) ? curr.filter(k => k !== key) : [...curr, key])
+    setSourcesFilter(curr =>
+      curr.includes(key) ? curr.filter(k => k !== key) : [...curr, key]
+    )
   }
 
   async function handleSend() {
     if (!question.trim()) return
-    await send(question.trim(), { collection, sourcesFilter: sourcesFilter.length ? sourcesFilter : null })
+    await send(question.trim(), {
+      collection,
+      sourcesFilter: sourcesFilter.length ? sourcesFilter : null
+    })
     setQuestion('')
   }
 
-  return (
-    <div className="card" style={{ display: 'grid', gap: 20 }}>
-      {/* Hero / mini-doc */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 20 }}>{t(lang, 'appTitle')}</h2>
-          <p style={{ margin: '6px 0 0', color: 'var(--muted)', fontSize: 13 }}>{t(lang, 'subtitle')}</p>
-          <p style={{ margin: '8px 0 0', color: 'var(--muted)', fontSize: 13 }}>
-            Professional RAG demo — Verified answers, source filtering and human escalation. Use the selector to choose a collection, then run a sample query or type your own.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="button secondary" onClick={() => setShowSamples(s => !s)}>{showSamples ? t(lang,'hideSamples') : t(lang,'showSamples')}</button>
-        </div>
-      </div>
+  async function handleSampleRun(
+    q: string,
+    opts?: { collection?: string; sourcesFilter?: string[] | null }
+  ) {
+    if (opts?.collection) {
+      setCollection(opts.collection as any)
+    }
+    if (opts?.sourcesFilter) {
+      setSourcesFilter(opts.sourcesFilter || [])
+    }
+    await send(q, {
+      collection: (opts?.collection as any) || collection,
+      sourcesFilter: opts?.sourcesFilter || (sourcesFilter.length ? sourcesFilter : null)
+    })
+  }
 
-      {showSamples && (
-        <div>
-          <SampleQueries lang={lang} onRun={async (q, opts) => {
-            // run sample via existing send; update collection and filters then call send
-            if (opts?.collection) setCollection(opts.collection as any)
-            if (opts?.sourcesFilter) setSourcesFilter(opts.sourcesFilter)
-            await send(q, { collection: opts?.collection || collection, sourcesFilter: opts?.sourcesFilter || (sourcesFilter.length ? sourcesFilter : null) })
-          }} />
-        </div>
-      )}
-      <div className="header">
+  return (
+    <div className="app-shell">
+      <header className="app-header">
         <div className="brand">
           <div className="logo">G</div>
           <div>
@@ -62,69 +62,125 @@ export const ChatPanel: React.FC<Props> = ({ lang, onLangChange }) => {
           </div>
         </div>
         <LanguageSwitcher lang={lang} onChange={onLangChange} />
-      </div>
+      </header>
 
-      <div className="input-row">
-        <input
-          className="input"
-          placeholder={t(lang,'askPlaceholder')}
-          value={question}
-          onChange={e => setQuestion(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') handleSend() }}
-        />
-        <button className="button" onClick={handleSend} disabled={loading}>{loading ? t(lang,'loading') : t(lang,'send')}</button>
-      </div>
+      <main className="app-grid">
+        <section className="chat-column">
+          <div className="card">
+            <div className="hero-text">
+              <h2 className="hero-title">{t(lang, 'heroTitle')}</h2>
+              <p className="hero-subtitle">{t(lang, 'heroSubtitle')}</p>
+            </div>
 
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-        <select
-          value={collection}
-          onChange={e => setCollection(e.target.value as any)}
-          className="input"
-          style={{ maxWidth: 240 }}
-        >
-          <option value="demo_public">{t(lang,'demoPublic')}</option>
-          <option value="knowledge_base_main">{t(lang,'knowledgeBase')}</option>
-        </select>
-        {collection === 'knowledge_base_main' && (
-          <SourceFilter lang={lang} selected={sourcesFilter} onToggle={toggleSource} />
-        )}
-      </div>
+            <div className="input-row">
+              <input
+                className="input"
+                placeholder={t(lang, 'askPlaceholder')}
+                value={question}
+                onChange={e => setQuestion(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleSend()
+                }}
+              />
+              <button
+                className={`button ${loading ? 'button-loading' : ''}`}
+                onClick={handleSend}
+                disabled={loading}
+                type="button"
+              >
+                {loading ? t(lang, 'loading') : t(lang, 'send')}
+              </button>
+            </div>
 
-      {error && <div className="badge" style={{ borderColor: 'red', color: 'red' }}>{t(lang,'error')} : {error}</div>}
+            <div className="controls-row">
+              <select
+                value={collection}
+                onChange={e => setCollection(e.target.value as any)}
+                className="input"
+              >
+                <option value="demo_public">{t(lang, 'demoPublic')}</option>
+                <option value="knowledge_base_main">{t(lang, 'knowledgeBase')}</option>
+              </select>
+              {collection === 'knowledge_base_main' && (
+                <SourceFilter lang={lang} selected={sourcesFilter} onToggle={toggleSource} />
+              )}
+            </div>
 
-      <div className="messages">
-        {messages.length === 0 && <div className="meta">{t(lang,'noMessages')}</div>}
-        {messages.map(m => (
-          <div key={m.id} className="bubble">
-            <div className="meta" style={{ marginBottom: 6 }}>{new Date(m.createdAt).toLocaleTimeString()} • {t(lang,'confidence')}: {(m.confidence*100).toFixed(1)}%</div>
-            <strong style={{ display: 'block', marginBottom: 6 }}>{m.question}</strong>
-            <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{m.answer}</div>
-            {/* Subtle quality badge: show when answer not fully quality_pass */}
-            {m.quality_pass === false && (
-              <div className="quality-warning">
-                ⚠️ This answer could not be fully verified automatically. Please review the cited sources or contact support.
+            <div className="samples-row">
+              <button
+                className="button secondary"
+                type="button"
+                onClick={() => setShowSamples(s => !s)}
+              >
+                {showSamples ? t(lang, 'hideSamples') : t(lang, 'showSamples')}
+              </button>
+            </div>
+
+            {showSamples && (
+              <div className="samples-panel">
+                <SampleQueries lang={lang} onRun={handleSampleRun} />
               </div>
             )}
-            {m.escalate === true && (
-              <div className="escalate-note">
-                🔎 This question has been flagged for human review. Our team will follow up.
+
+            {error && (
+              <div className="badge badge-error">
+                {t(lang, 'error')} : {error}
               </div>
             )}
-            {m.sources?.length > 0 && (
-              <div style={{ marginTop: 10, display: 'grid', gap: 4 }}>
-                <div className="meta">{t(lang,'sources')}:</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {m.sources.slice(0,5).map(s => (
-                    <span key={s.id} className="badge" title={s.type}>{s.source} • {s.score.toFixed(3)}</span>
-                  ))}
+
+            <div className="messages">
+              {messages.length === 0 && (
+                <div className="meta">{t(lang, 'noMessages')}</div>
+              )}
+              {messages.map(m => (
+                <div key={m.id} className="bubble">
+                  <div className="meta" style={{ marginBottom: 6 }}>
+                    {new Date(m.createdAt).toLocaleTimeString()} • {t(lang, 'confidence')}: 
+                    {(m.confidence * 100).toFixed(1)}%
+                    {typeof m.latencyMs === 'number' ? ` • ${m.latencyMs.toFixed(0)} ms` : ''}
+                  </div>
+                  <strong>{m.question}</strong>
+                  <div className="answer">{m.answer}</div>
+                  {m.quality_pass === false && (
+                    <div className="quality-warning">
+                      This answer could not be fully verified automatically. Please review the
+                      cited sources or contact support.
+                    </div>
+                  )}
+                  {m.escalate === true && (
+                    <div className="escalate-note">
+                      This question has been flagged for human review. Our team will follow up.
+                    </div>
+                  )}
+                  {m.sources?.length > 0 && (
+                    <div style={{ marginTop: 10, display: 'grid', gap: 4 }}>
+                      <div className="meta">{t(lang, 'sources')}:</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {m.sources.slice(0, 5).map(s => (
+                          <span key={s.id} className="badge" title={s.type}>
+                            {s.source} • {s.score.toFixed(3)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+              ))}
+            </div>
 
-      <div className="footer">{t(lang,'footer')}</div>
+            <div className="footer">{t(lang, 'footer')}</div>
+          </div>
+        </section>
+
+        <aside className="insights-column">
+          <div className="card">
+            <MetricsDashboard lang={lang} messages={messages} metrics={metrics} />
+          </div>
+          <div className="card">
+            <SystemStatus lang={lang} messages={messages} metrics={metrics} />
+          </div>
+        </aside>
+      </main>
     </div>
   )
 }
