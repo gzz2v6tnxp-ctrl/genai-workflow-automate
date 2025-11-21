@@ -1,7 +1,6 @@
-# main.py
+# main.py (extrait corrigé)
 from fastapi import FastAPI
 from router import ingestion, retriever, chatbot
-
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
@@ -11,20 +10,17 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Configuration CORS adaptative
-# En dev local : autoriser localhost
-# En prod (GitHub Pages) : autoriser l'URL GitHub Pages
 ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Frontend Vite (dev)
-    "http://localhost:3000",  # Alt frontend (dev)
-    "http://127.0.0.1:5173",  # Localhost alt
-    "https://gzz2v6tnxp-ctrl.github.io",  # GitHub Pages root
-    "https://gzz2v6tnxp-ctrl.github.io/genai-workflow-automate",  # GitHub Pages repo path
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "https://gzz2v6tnxp-ctrl.github.io",
 ]
 
-# Autoriser des origins supplémentaires via env var (pour Railway + custom domains)
+# Autoriser des origins supplémentaires via env var (p.ex. "https://example.com,https://app.example.com")
 if os.getenv("ALLOWED_ORIGINS"):
-    ALLOWED_ORIGINS.extend(os.getenv("ALLOWED_ORIGINS", "").split(","))
+    extra = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+    ALLOWED_ORIGINS.extend(extra)
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,15 +30,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Inclure les routeurs
+# Include routers
 # app.include_router(ingestion.router)
 # app.include_router(retriever.router)
 app.include_router(chatbot.router)
-
-
-@app.get("/", tags=["Root"])
-async def read_root():
-    return {"message": "Bienvenue sur l'API du pipeline GenAI Workflow Automate."}
-
-# Pour lancer l'API, utilisez la commande :
-# uvicorn main:app --reload

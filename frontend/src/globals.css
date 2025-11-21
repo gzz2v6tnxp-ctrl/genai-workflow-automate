@@ -1,0 +1,32 @@
+:root {
+  --primary-color: #3498db;
+  --secondary-color: #2ecc71;
+  --font-family: 'Arial', sans-serif;
+  --font-size-base: 16px;
+  --line-height-base: 1.5;
+  --margin-base: 0;
+  --padding-base: 0;
+}
+
+body {
+  margin: var(--margin-base);
+  padding: var(--padding-base);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  color: var(--primary-color);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: var(--margin-base);
+}
+
+p {
+  margin: var(--margin-base);
+}
+
+@media (max-width: 600px) {
+  :root {
+    --font-size-base: 14px;
+  }
+}
