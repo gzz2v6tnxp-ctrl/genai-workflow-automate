@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import type { Lang } from '../i18n/translations'
 
@@ -70,6 +70,34 @@ export function useChat(lang: Lang) {
   const [lastSuccessAt, setLastSuccessAt] = useState<number | null>(null)
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null)
   const [errorLog, setErrorLog] = useState<string[]>([])
+
+  // Heartbeat léger pour garder le backend Render "chaud" en production
+  useEffect(() => {
+    if (!isProduction) return
+
+    let cancelled = false
+
+    const ping = async () => {
+      try {
+        await axios.get(`${API_BASE}/health`, { timeout: 3000 })
+      } catch {
+        // on ignore les erreurs ici: le statut détaillé est géré par useChat/send
+      }
+    }
+
+    // premier ping immédiat au montage
+    ping()
+    const id = window.setInterval(() => {
+      if (!cancelled) {
+        void ping()
+      }
+    }, 30000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [])
 
   async function send(question: string, opts: SendOptions) {
     setLoading(true)

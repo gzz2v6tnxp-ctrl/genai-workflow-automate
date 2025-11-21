@@ -30,6 +30,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """Endpoint léger pour vérifier que l'API est vivante.
+
+    Utilisé par le frontend (mode production) pour pinger régulièrement
+    le backend Render et limiter les cold starts.
+    """
+    return {"status": "ok"}
+
+
 # Include routers
 # app.include_router(ingestion.router)
 # app.include_router(retriever.router)
