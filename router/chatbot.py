@@ -79,7 +79,8 @@ class ChatResponse(BaseModel):
     question: str
     answer: str
     language: str
-    confidence: float
+    similarity_score: float  # Score de similarité brut (0-1)
+    confidence_score: float  # Score de confiance ajusté (×0.8)
     sources: List[SourceInfo]
     mode: str
     # Quality evaluation fields (optional, used by frontend for subtle UX)
@@ -152,39 +153,47 @@ async def query_chatbot(payload: ChatQuery):
         # Decide final payload based on evaluation
         chosen = None
         mode = "fallback"
-        confidence = 0.0
+        similarity_score = 0.0
+        confidence_score = 0.0
 
         if last_evaluate is not None:
             if last_evaluate.get("quality_pass"):
                 chosen = last_generate or last_fallback
                 mode = "generate"
-                confidence = float(last_evaluate.get("confidence", 0.0))
+                similarity_score = float(last_evaluate.get("similarity_score", 0.0))
+                confidence_score = float(last_evaluate.get("confidence_score", 0.0))
             else:
                 # not quality_pass
                 if last_evaluate.get("escalate") and last_human is not None:
                     chosen = last_human
                     mode = "human_review"
-                    confidence = float(last_evaluate.get("confidence", 0.0))
+                    similarity_score = float(last_evaluate.get("similarity_score", 0.0))
+                    confidence_score = float(last_evaluate.get("confidence_score", 0.0))
                 else:
                     chosen = last_fallback or last_generate
                     mode = "fallback"
-                    confidence = float(last_evaluate.get("confidence", 0.0))
+                    similarity_score = float(last_evaluate.get("similarity_score", 0.0))
+                    confidence_score = float(last_evaluate.get("confidence_score", 0.0))
         else:
             # no evaluation node present -> fallback to generate or fallback
             if last_generate is not None:
                 chosen = last_generate
                 mode = "generate"
-                # derive confidence from sources if possible
+                # derive scores from sources if possible
                 srcs = chosen.get("sources", [])
                 if srcs:
                     try:
-                        confidence = round(float(srcs[0].get("score", 0.0)), 3)
+                        avg_score = sum(float(s.get("score", 0.0)) for s in srcs) / len(srcs)
+                        similarity_score = round(avg_score, 3)
+                        confidence_score = round(avg_score * 0.8, 3)
                     except Exception:
-                        confidence = 0.0
+                        similarity_score = 0.0
+                        confidence_score = 0.0
             elif last_fallback is not None:
                 chosen = last_fallback
                 mode = "fallback"
-                confidence = 0.0
+                similarity_score = 0.0
+                confidence_score = 0.0
 
         if not chosen:
             raise HTTPException(status_code=500, detail="Aucune réponse générée")
@@ -217,7 +226,8 @@ async def query_chatbot(payload: ChatQuery):
             question=payload.question,
             answer=answer_text,
             language=response_lang,
-            confidence=confidence,
+            similarity_score=similarity_score,
+            confidence_score=confidence_score,
             sources=mapped_sources,
             mode=mode,
             quality_pass=eval_meta.get("quality_pass") if isinstance(eval_meta, dict) else None,
@@ -229,7 +239,7 @@ async def query_chatbot(payload: ChatQuery):
 
         # Debug log to console for tracing which branch was chosen
         try:
-            print(f"[chatbot] chosen_mode={mode} confidence={confidence} response_lang={response_lang} sources_filter={payload.sources_filter}")
+            print(f"[chatbot] chosen_mode={mode} similarity={similarity_score} confidence={confidence_score} response_lang={response_lang} sources_filter={payload.sources_filter}")
         except Exception:
             pass
 

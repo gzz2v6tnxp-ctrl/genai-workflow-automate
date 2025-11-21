@@ -82,7 +82,7 @@ class DocumentRetriever:
 
         # 1. Générer l'embedding de la requête
         query_doc = Document(page_content=query)
-        query_embedding = generate_embeddings([query_doc])[0].tolist()
+        query_embedding = generate_embeddings([query_doc])[0]
 
         # 2. Construire le filtre Qdrant si nécessaire
         query_filter = None

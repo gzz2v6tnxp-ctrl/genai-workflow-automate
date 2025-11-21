@@ -207,10 +207,11 @@ def evaluate_response(state):
     documents = state.get("documents", [])
     question = state.get("question", "")
 
-    # stabilité des scores
+    # Calcul des scores : brut (similarité) et ajusté (confiance)
     scores = [float(s.get("score", 0.0)) for s in sources] if sources else [0.0]
     avg_score = sum(scores) / len(scores) if scores else 0.0
-    confidence = avg_score * 0.8
+    similarity_score = round(avg_score, 3)  # Score de similarité brut
+    confidence_score = round(avg_score * 0.8, 3)  # Score de confiance ajusté (×0.8)
 
     # vérification de citation par id ou chevauchement texte
     cited_ids = [s["id"] for s in sources if str(s.get("id")) in generation]
@@ -255,19 +256,19 @@ def evaluate_response(state):
             overlap_count += 1
     overlap_ratio = overlap_count / max(1, len(documents))
 
-    # decision: accept if NOT hallucination AND confidence >= 0.35 AND (cites_ok OR overlap_ratio>=0.35)
+    # decision: accept if NOT hallucination AND confidence_score >= 0.35 AND (cites_ok OR overlap_ratio>=0.35)
     cites_ok = bool(cited_ids) or overlap_found
-    quality_pass = (not hallucination) and (confidence >= 0.35) and (cites_ok or overlap_ratio >= 0.35)
+    quality_pass = (not hallucination) and (confidence_score >= 0.35) and (cites_ok or overlap_ratio >= 0.35)
     escalate = False
     if not quality_pass:
-        escalate = (confidence < 0.25) or hallucination
+        escalate = (confidence_score < 0.25) or hallucination
 
     # metrics/log
     metrics = {
         "timestamp": datetime.utcnow().isoformat(),
         "question": question,
-        "avg_score": avg_score,
-        "confidence": confidence,
+        "similarity_score": similarity_score,
+        "confidence_score": confidence_score,
         "cites_ok": cites_ok,
         "hallucination": hallucination,
         "quality_pass": quality_pass,
@@ -300,16 +301,22 @@ def evaluate_response(state):
 
         print(f"⚠️ Snapshot saved for review: {snap_path}")
 
-    print(f" -> avg_score={avg_score:.3f}, confidence={confidence:.3f}, cites_ok={cites_ok}, hallucination={hallucination}, quality_pass={quality_pass}, escalate={escalate}")
+    print(f" -> similarity={similarity_score:.3f}, confidence={confidence_score:.3f}, cites_ok={cites_ok}, hallucination={hallucination}, quality_pass={quality_pass}, escalate={escalate}")
 
     # persist additional metrics
-    state["confidence"] = confidence
+    state["similarity_score"] = similarity_score
+    state["confidence_score"] = confidence_score
     state["quality_pass"] = quality_pass
     state["escalate"] = escalate
     state["overlap_ratio"] = overlap_ratio
     state["cites_ok"] = cites_ok
 
-    return {"quality_pass": quality_pass, "confidence": confidence, "escalate": escalate}
+    return {
+        "quality_pass": quality_pass,
+        "similarity_score": similarity_score,
+        "confidence_score": confidence_score,
+        "escalate": escalate
+    }
 
 
 def grade_documents(state):

@@ -6,6 +6,7 @@ import { SourceFilter } from './SourceFilter'
 import { SampleQueries } from './SampleQueries'
 import { MetricsDashboard } from './MetricsDashboard'
 import { SystemStatus } from './SystemStatus'
+import { ScoreDisplay } from './ScoreDisplay'
 
 interface Props {
   lang: Lang
@@ -135,12 +136,20 @@ export const ChatPanel: React.FC<Props> = ({ lang, onLangChange }) => {
               {messages.map(m => (
                 <div key={m.id} className="bubble">
                   <div className="meta" style={{ marginBottom: 6 }}>
-                    {new Date(m.createdAt).toLocaleTimeString()} • {t(lang, 'confidence')}: 
-                    {(m.confidence * 100).toFixed(1)}%
+                    {new Date(m.createdAt).toLocaleTimeString()}
                     {typeof m.latencyMs === 'number' ? ` • ${m.latencyMs.toFixed(0)} ms` : ''}
                   </div>
                   <strong>{m.question}</strong>
                   <div className="answer">{m.answer}</div>
+                  
+                  {/* Affichage des scores */}
+                  {m.similarity_score !== undefined && m.confidence_score !== undefined && (
+                    <ScoreDisplay 
+                      similarityScore={m.similarity_score}
+                      confidenceScore={m.confidence_score}
+                    />
+                  )}
+
                   {m.quality_pass === false && (
                     <div className="quality-warning">
                       This answer could not be fully verified automatically. Please review the

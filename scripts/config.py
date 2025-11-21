@@ -18,9 +18,9 @@ COLLECTION_NAME = os.getenv("COLLECTION_NAME", "genai_workflow_docs_test")
 
 # --- Configuration du Modèle d'Embedding ---
 # La dimension des vecteurs est déterminée par le modèle d'embedding.
-# Pour "all-mpnet-base-v2", cette dimension est 768 (vs 384 pour all-MiniLM-L6-v2).
-VECTOR_DIMENSION = int(os.getenv("VECTOR_DIMENSION", 768))
-DEFAULT_EMBEDDING_MODEL = str(os.getenv("DEFAULT_EMBEDDING_MODEL", "all-mpnet-base-v2"))
+# Pour "text-embedding-3-small", cette dimension est 1536.
+VECTOR_DIMENSION = int(os.getenv("VECTOR_DIMENSION", 1536))
+DEFAULT_EMBEDDING_MODEL = str(os.getenv("DEFAULT_EMBEDDING_MODEL", "text-embedding-3-small"))
 
 # --- Configuration LLM (OpenAI) ---
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")

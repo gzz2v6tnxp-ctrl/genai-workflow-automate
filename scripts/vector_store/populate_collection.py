@@ -78,7 +78,7 @@ def upsert_data_to_collection(client: QdrantClient, collection_name: str, docume
         points.append(
             models.PointStruct(
                 id=doc_id, # Utiliser directement doc_id qui est maintenant un UUID valide
-                vector=embeddings[i].tolist(),
+                vector=embeddings[i],
                 payload=payload,
             )
         )
@@ -116,13 +116,13 @@ def run_populate_collections(limit: int = 0):
         print("Aucun document à traiter. Arrêt du script.")
         return
 
-    # synth_documents = [doc for doc in all_documents if doc.metadata.get("source") == "synth"]
+    synth_documents = [doc for doc in all_documents if doc.metadata.get("source") == "synth"]
 
     try:
         client = QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_PORT, timeout=30000)
         print(f"\n🔗 Connecté à Qdrant sur {config.QDRANT_HOST}:{config.QDRANT_PORT}")
 
-        # upsert_data_to_collection(client, PUBLIC_COLLECTION_NAME, synth_documents)
+        upsert_data_to_collection(client, PUBLIC_COLLECTION_NAME, synth_documents)
         upsert_data_to_collection(client, MAIN_KB_COLLECTION_NAME, all_documents)
 
         print("\n--- Vérification finale du nombre de points ---")

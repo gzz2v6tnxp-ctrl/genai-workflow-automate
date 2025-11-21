@@ -1,13 +1,7 @@
-"""
-Script de migration complète : Local → Qdrant Cloud
-Basé sur les recommandations officielles Qdrant :
-https://qdrant.tech/documentation/database-tutorials/create-snapshot/
-"""
-
 import sys
 from pathlib import Path
-from qdrant_client import QdrantClient
 import requests
+from qdrant_client import QdrantClient
 
 project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
@@ -16,213 +10,149 @@ from scripts import config
 
 
 def create_snapshot(collection_name: str, output_dir: str = "./snapshots") -> str:
-    """
-    Crée un snapshot de la collection locale et le télécharge.
-    
-    Returns:
-        str: Chemin du fichier snapshot téléchargé
-    """
+    """Crée un snapshot de la collection locale et le télécharge."""
     client = QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_PORT)
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
-    
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     print(f"\n📸 Création du snapshot pour '{collection_name}'...")
-    
-    # Vérifier la collection
+
+    # Vérifier nombre de points
     try:
-        count_result = client.count(collection_name=collection_name, exact=True)
-        print(f"   📊 Collection contient {count_result.count} points")
-        
-        if count_result.count == 0:
-            print(f"⚠️  ATTENTION : Collection vide !")
-            return None
+        count = client.count(collection_name=collection_name, exact=True).count
+        print(f"   📊 Collection contient {count} points")
     except Exception as e:
-        print(f"❌ Collection inaccessible : {e}")
-        return None
-    
+        print(f"   ⚠️  Impossible de compter les points : {e}")
+
     # Créer le snapshot
     try:
-        snapshot_info = client.create_snapshot(
-            collection_name=collection_name,
-            wait=True  # Attendre la fin de la création
-        )
-        print(f"✅ Snapshot créé : {snapshot_info.name}")
+        snapshot_info = client.create_snapshot(collection_name=collection_name, wait=True)
+        snap_name = getattr(snapshot_info, "name", None) or snapshot_info.get("name")
+        print(f"✅ Snapshot créé : {snap_name}")
     except Exception as e:
         print(f"❌ Erreur création snapshot : {e}")
-        return None
-    
-    # Télécharger le snapshot via HTTP API
+        return ""
+
+    # Télécharger via HTTP
     try:
-        snapshot_url = f"http://{config.QDRANT_HOST}:{config.QDRANT_PORT}/collections/{collection_name}/snapshots/{snapshot_info.name}"
-        local_path = Path(output_dir) / f"{collection_name}-{snapshot_info.name}"
-        
-        response = requests.get(snapshot_url, stream=True)
-        response.raise_for_status()
-        
-        with open(local_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-        
+        download_url = f"http://{config.QDRANT_HOST}:{config.QDRANT_PORT}/collections/{collection_name}/snapshots/{snap_name}"
+        local_path = out_dir / f"{collection_name}-{snap_name}"
+
+        resp = requests.get(download_url, stream=True)
+        resp.raise_for_status()
+
+        with open(local_path, "wb") as f:
+            for chunk in resp.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+
         size_mb = local_path.stat().st_size / 1024 / 1024
         print(f"📦 Snapshot téléchargé : {local_path.name}")
         print(f"   Taille : {size_mb:.2f} MB")
         return str(local_path)
-        
     except Exception as e:
         print(f"❌ Erreur téléchargement : {e}")
-        return None
+        return ""
+
+
+def delete_cloud_collection_if_exists(collection_name: str):
+    """Supprime la collection cloud si elle existe (pour éviter conflit de dimensions)."""
+    cloud_client = QdrantClient(url=config.QDRANT_CLOUD_URL, api_key=config.QDRANT_API_KEY)
+    
+    try:
+        if cloud_client.collection_exists(collection_name):
+            print(f"🗑️  Suppression de la collection cloud existante '{collection_name}'...")
+            cloud_client.delete_collection(collection_name=collection_name)
+            print(f"   ✅ Collection '{collection_name}' supprimée du cloud")
+        else:
+            print(f"   ℹ️  Collection '{collection_name}' n'existe pas encore sur le cloud")
+    except Exception as e:
+        print(f"   ⚠️  Erreur lors de la vérification/suppression : {e}")
 
 
 def upload_snapshot_to_cloud(collection_name: str, snapshot_path: str) -> bool:
-    """
-    Upload un snapshot vers Qdrant Cloud avec priority=snapshot.
-    Méthode recommandée par la documentation officielle.
-    
-    Args:
-        collection_name: Nom de la collection à créer/restaurer
-        snapshot_path: Chemin local du fichier snapshot
-        
-    Returns:
-        bool: True si succès
-    """
+    """Upload un fichier snapshot vers Qdrant Cloud."""
     if not Path(snapshot_path).exists():
-        print(f"❌ Fichier inexistant : {snapshot_path}")
+        print(f"❌ Fichier snapshot introuvable : {snapshot_path}")
         return False
-    
-    # Vérifier la configuration cloud
-    if not config.QDRANT_CLOUD_URL or not config.QDRANT_API_KEY:
-        print("❌ Configuration cloud manquante (QDRANT_CLOUD_URL / QDRANT_API_KEY)")
-        return False
-    
-    print(f"\n📤 Upload vers le cloud : {collection_name}")
+
+    upload_url = (
+        f"{config.QDRANT_CLOUD_URL}/collections/{collection_name}/snapshots/upload"
+        "?priority=snapshot"
+    )
+
     size_mb = Path(snapshot_path).stat().st_size / 1024 / 1024
+    print(f"\n📤 Upload vers le cloud : {collection_name}")
     print(f"   Fichier : {Path(snapshot_path).name} ({size_mb:.2f} MB)")
-    
+
     try:
-        # URL de l'API Cloud avec priority=snapshot (recommandation officielle)
-        upload_url = f"{config.QDRANT_CLOUD_URL}/collections/{collection_name}/snapshots/upload?priority=snapshot"
-        
-        # Upload du fichier
-        with open(snapshot_path, 'rb') as f:
-            response = requests.post(
+        with open(snapshot_path, "rb") as f:
+            resp = requests.post(
                 upload_url,
                 headers={"api-key": config.QDRANT_API_KEY},
-                files={"snapshot": (Path(snapshot_path).name, f)},
-                timeout=600  # 10 minutes pour les gros fichiers
+                files={"snapshot": f},
+                timeout=600,
             )
-        
-        response.raise_for_status()
-        print(f"✅ Upload réussi")
-        
-        # Vérification
-        cloud_client = QdrantClient(
-            url=config.QDRANT_CLOUD_URL,
-            api_key=config.QDRANT_API_KEY,
-        )
-        count_result = cloud_client.count(collection_name=collection_name, exact=True)
-        print(f"   📊 Points dans le cloud : {count_result.count}")
-        
-        return True
-        
-    except requests.exceptions.Timeout:
-        print(f"⏱️  Timeout : Le fichier est volumineux")
-        print(f"   💡 L'upload peut continuer en arrière-plan")
-        return False
+            resp.raise_for_status()
+            print(f"✅ Upload réussi pour '{collection_name}'")
+            return True
     except requests.exceptions.HTTPError as e:
         print(f"❌ Erreur HTTP : {e}")
-        if hasattr(e.response, 'text'):
+        try:
             print(f"   Détails : {e.response.text}")
+        except:
+            pass
         return False
     except Exception as e:
-        print(f"❌ Erreur : {e}")
+        print(f"❌ Erreur upload : {e}")
         return False
 
 
-def migrate_collection(collection_name: str) -> bool:
-    """
-    Migration complète d'une collection : Local → Cloud
-    
-    Args:
-        collection_name: Nom de la collection à migrer
-        
-    Returns:
-        bool: True si succès
-    """
+def migrate_collection(collection_name: str):
+    """Pipeline complet : snapshot local → suppression cloud → upload."""
     print("\n" + "=" * 70)
     print(f"🔄 MIGRATION : {collection_name}")
     print("=" * 70)
-    
-    # Étape 1 : Créer snapshot local
+
+    # 1. Créer et télécharger le snapshot local
     snapshot_path = create_snapshot(collection_name)
     if not snapshot_path:
-        print(f"❌ Échec création snapshot")
+        print(f"❌ Échec création snapshot pour '{collection_name}'")
         return False
+
+    # 2. Supprimer la collection cloud si elle existe (évite conflit de dimensions)
+    delete_cloud_collection_if_exists(collection_name)
+
+    # 3. Upload le snapshot vers le cloud
+    success = upload_snapshot_to_cloud(collection_name, snapshot_path)
     
-    # Étape 2 : Upload vers le cloud
-    if upload_snapshot_to_cloud(collection_name, snapshot_path):
-        print(f"✅ Migration réussie pour '{collection_name}'")
-        return True
+    if success:
+        print(f"✅ Migration complète pour '{collection_name}'")
     else:
         print(f"❌ Échec upload pour '{collection_name}'")
-        return False
+    
+    return success
 
 
 def main():
-    """
-    Script principal de migration
-    """
-    print("=" * 70)
-    print("☁️  MIGRATION QDRANT : LOCAL → CLOUD")
-    print("=" * 70)
-    
-    # Vérifier la configuration
-    print(f"\n🔧 Configuration :")
-    print(f"   Local  : {config.QDRANT_HOST}:{config.QDRANT_PORT}")
-    print(f"   Cloud  : {config.QDRANT_CLOUD_URL or '❌ Non configuré'}")
-    
-    if not config.QDRANT_CLOUD_URL or not config.QDRANT_API_KEY:
-        print("\n❌ Configuration cloud manquante !")
-        print("\n📝 Ajoutez dans votre fichier .env :")
-        print("   QDRANT_CLOUD_URL=https://your-cluster.aws.cloud.qdrant.io")
-        print("   QDRANT_API_KEY=your-api-key")
-        sys.exit(1)
-    
-    # Collections à migrer
-    collections = ["demo_public", "knowledge_base_main"]
-    
-    print(f"\n📦 Collections à migrer : {', '.join(collections)}")
-    print("\n⚠️  Cette opération va :")
-    print("   1. Créer des snapshots des collections locales")
-    print("   2. Les télécharger dans ./snapshots/")
-    print("   3. Les uploader vers Qdrant Cloud")
-    print("   4. Recréer les collections sur le cloud")
-    
-    response = input("\n🚀 Continuer ? (y/N): ")
-    if response.lower() != 'y':
-        print("\n❌ Migration annulée")
-        sys.exit(0)
-    
-    # Migration
-    print("\n🔄 Démarrage de la migration...")
-    success_count = 0
-    
-    for collection in collections:
-        if migrate_collection(collection):
-            success_count += 1
-    
-    # Résumé
+    """Migre les deux collections vers Qdrant Cloud."""
     print("\n" + "=" * 70)
-    if success_count == len(collections):
-        print("✅ MIGRATION TERMINÉE AVEC SUCCÈS")
-        print(f"   {success_count}/{len(collections)} collections migrées")
-    else:
-        print(f"⚠️  MIGRATION PARTIELLE")
-        print(f"   {success_count}/{len(collections)} collections migrées")
+    print("� DÉBUT DE LA MIGRATION VERS QDRANT CLOUD")
     print("=" * 70)
-    
-    # Cleanup
-    print("\n🧹 Nettoyage :")
-    print("   Les snapshots sont conservés dans ./snapshots/")
-    print("   Vous pouvez les supprimer manuellement si nécessaire")
+
+    collections = ["demo_public", "knowledge_base_main"]
+    results = {}
+
+    for collection in collections:
+        results[collection] = migrate_collection(collection)
+
+    # Résumé final
+    print("\n" + "=" * 70)
+    print("📊 RÉSUMÉ DE LA MIGRATION")
+    print("=" * 70)
+    for collection, success in results.items():
+        status = "✅ Succès" if success else "❌ Échec"
+        print(f"  {collection}: {status}")
 
 
 if __name__ == "__main__":

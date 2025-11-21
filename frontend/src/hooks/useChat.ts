@@ -22,7 +22,8 @@ export interface ChatMessage {
   question: string
   answer: string
   language: string
-  confidence: number
+  similarity_score: number  // Score de similarité brut
+  confidence_score: number  // Score de confiance ajusté
   sources: Array<{
     id: string | number
     score: number
@@ -90,7 +91,8 @@ export function useChat(lang: Lang) {
         question,
         answer: data.answer,
         language: data.language,
-        confidence: data.confidence,
+        similarity_score: data.similarity_score || 0,
+        confidence_score: data.confidence_score || 0,
         sources: data.sources || [],
         quality_pass: data.quality_pass ?? null,
         escalate: data.escalate ?? null,

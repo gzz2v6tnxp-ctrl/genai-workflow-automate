@@ -2,7 +2,8 @@ import sys
 from pathlib import Path
 from typing import List
 import numpy as np
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer
+from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
 
 # Ajouter le répertoire racine du projet au path pour permettre les imports
@@ -19,27 +20,33 @@ DEFAULT_EMBEDDING_MODEL = config.DEFAULT_EMBEDDING_MODEL
 
 def generate_embeddings(
     documents: List[Document], model_name: str = DEFAULT_EMBEDDING_MODEL
-) -> List[np.ndarray]:
+) -> List[List[float]]:
     """
-    Génère les embeddings pour une liste de documents en utilisant un modèle Sentence Transformer.
+    Génère les embeddings pour une liste de documents en utilisant OpenAI Embeddings.
 
     Args:
         documents: Une liste d'objets Document de LangChain.
-        model_name: Le nom du modèle Sentence Transformer à utiliser.
+        model_name: Le nom du modèle OpenAI à utiliser (ex: text-embedding-3-small).
 
     Returns:
-        Une liste de vecteurs d'embedding (numpy arrays).
+        Une liste de vecteurs d'embedding (listes de floats).
     """
-    print(f"Chargement du modèle d'embedding : '{model_name}'...")
-    # Le modèle sera téléchargé depuis Hugging Face Hub la première fois.
-    model = SentenceTransformer(model_name)
+    print(f"Initialisation du modèle d'embedding OpenAI : '{model_name}'...")
+    
+    # Initialiser le modèle d'embedding OpenAI
+    # Assurez-vous que OPENAI_API_KEY est définie dans l'environnement ou config.py
+    embeddings_model = OpenAIEmbeddings(
+        model=model_name,
+        openai_api_key=config.OPENAI_API_KEY
+    )
 
     # Extraire le contenu textuel de chaque document
     contents = [doc.page_content for doc in documents]
 
-    print(f"Génération des embeddings pour {len(contents)} documents...")
-    # L'option show_progress_bar est utile pour suivre l'avancement sur de grands datasets.
-    embeddings = model.encode(contents, show_progress_bar=True)
+    print(f"Génération des embeddings pour {len(contents)} documents via OpenAI API...")
+    
+    # embed_documents prend une liste de textes et retourne une liste de vecteurs
+    embeddings = embeddings_model.embed_documents(contents)
 
     print("Génération des embeddings terminée.")
     return embeddings
