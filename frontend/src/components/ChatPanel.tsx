@@ -105,19 +105,19 @@ export const ChatPanel: React.FC<Props> = ({ lang, onLangChange }) => {
                       {typeof m.latencyMs === 'number' && <span>• {m.latencyMs.toFixed(0)} ms</span>}
                     </div>
 
-                    <div className="bg-white/5 rounded-2xl rounded-tl-none p-4 border border-white/10 mb-2">
-                      <strong className="block text-purple-300 mb-1">User</strong>
-                      <div className="text-white/90">{m.question}</div>
+                    <div className="bg-white/5 rounded-2xl rounded-tl-none p-5 border border-white/10 mb-2">
+                      <strong className="block text-purple-300 mb-2 text-sm uppercase tracking-wide">User</strong>
+                      <div className="text-white/90 leading-7">{m.question}</div>
                     </div>
 
                     <div className="pl-8">
-                      <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-2xl rounded-tr-none p-4 border border-white/10">
-                        <strong className="block text-blue-300 mb-1">Assistant</strong>
-                        <div className="text-gray-200 whitespace-pre-wrap leading-relaxed">{m.answer}</div>
+                      <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-2xl rounded-tr-none p-5 border border-white/10">
+                        <strong className="block text-blue-300 mb-2 text-sm uppercase tracking-wide">Assistant</strong>
+                        <div className="text-gray-200 whitespace-pre-wrap leading-8">{m.answer}</div>
 
                         {/* Scores */}
                         {(m.similarity_score !== undefined || m.confidence_score !== undefined) && (
-                          <div className="mt-4 pt-4 border-t border-white/5">
+                          <div className="mt-6 pt-4 border-t border-white/5">
                             <ScoreDisplay
                               similarityScore={m.similarity_score}
                               confidenceScore={m.confidence_score}
@@ -127,19 +127,19 @@ export const ChatPanel: React.FC<Props> = ({ lang, onLangChange }) => {
 
                         {/* Warnings */}
                         {m.quality_pass === false && (
-                          <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-200">
+                          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-200 leading-relaxed">
                             This answer could not be fully verified automatically. Please review the cited sources.
                           </div>
                         )}
 
                         {/* Sources */}
                         {m.sources?.length > 0 && (
-                          <div className="mt-4">
-                            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">{t(lang, 'sources')}</div>
+                          <div className="mt-6">
+                            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">{t(lang, 'sources')}</div>
                             <div className="flex flex-wrap gap-2">
                               {m.sources.slice(0, 5).map(s => (
-                                <span key={s.id} className="px-2 py-1 text-xs rounded-md bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-colors cursor-help" title={s.type}>
-                                  {s.source} • <span className="text-green-400">{s.score.toFixed(3)}</span>
+                                <span key={s.id} className="px-3 py-1.5 text-xs rounded-md bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-colors cursor-help flex items-center gap-2" title={s.type}>
+                                  {s.source} <span className="w-1 h-1 rounded-full bg-gray-600"></span> <span className="text-green-400 font-mono">{s.score.toFixed(3)}</span>
                                 </span>
                               ))}
                             </div>
@@ -159,7 +159,7 @@ export const ChatPanel: React.FC<Props> = ({ lang, onLangChange }) => {
                     <select
                       value={collection}
                       onChange={e => setCollection(e.target.value as any)}
-                      className="bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-300 focus:outline-none focus:border-purple-500 transition-colors"
+                      className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-purple-500 transition-colors"
                     >
                       <option value="demo_public">{t(lang, 'demoPublic')}</option>
                       <option value="knowledge_base_main">{t(lang, 'knowledgeBase')}</option>
@@ -169,7 +169,7 @@ export const ChatPanel: React.FC<Props> = ({ lang, onLangChange }) => {
                     )}
                   </div>
                   <button
-                    className="text-xs text-purple-400 hover:text-purple-300 transition-colors font-medium"
+                    className="text-xs text-purple-400 hover:text-purple-300 transition-colors font-medium px-2 py-1 hover:bg-white/5 rounded"
                     type="button"
                     onClick={() => setShowSamples(s => !s)}
                   >
@@ -185,7 +185,7 @@ export const ChatPanel: React.FC<Props> = ({ lang, onLangChange }) => {
 
                 <div className="relative">
                   <input
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-12 py-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-5 pr-14 py-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all shadow-lg shadow-black/20"
                     placeholder={t(lang, 'askPlaceholder')}
                     value={question}
                     onChange={e => setQuestion(e.target.value)}
@@ -194,7 +194,7 @@ export const ChatPanel: React.FC<Props> = ({ lang, onLangChange }) => {
                     }}
                   />
                   <button
-                    className={`absolute right-2 top-2 p-2 rounded-lg bg-purple-600 text-white hover:bg-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${loading ? 'animate-pulse' : ''}`}
+                    className={`absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-lg bg-purple-600 text-white hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20 disabled:opacity-50 disabled:cursor-not-allowed ${loading ? 'animate-pulse' : ''}`}
                     onClick={handleSend}
                     disabled={loading}
                     type="button"
