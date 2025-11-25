@@ -7,6 +7,9 @@ import { SampleQueries } from './SampleQueries'
 import { MetricsDashboard } from './MetricsDashboard'
 import { SystemStatus } from './SystemStatus'
 import { ScoreDisplay } from './ScoreDisplay'
+import { Layout } from './Layout'
+import { ArrowLeft, Send, Sparkles } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 interface Props {
   lang: Lang
@@ -20,6 +23,7 @@ export const ChatPanel: React.FC<Props> = ({ lang, onLangChange }) => {
     useState<'demo_public' | 'knowledge_base_main'>('demo_public')
   const [sourcesFilter, setSourcesFilter] = useState<string[]>([])
   const [showSamples, setShowSamples] = useState(false)
+  const navigate = useNavigate()
 
   function toggleSource(key: string) {
     setSourcesFilter(curr =>
@@ -53,143 +57,175 @@ export const ChatPanel: React.FC<Props> = ({ lang, onLangChange }) => {
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div className="brand">
-          <div className="logo">G</div>
-          <div>
-            <h1 className="title">{t(lang, 'appTitle')}</h1>
-            <p className="sub">{t(lang, 'subtitle')}</p>
+    <Layout>
+      <div className="flex flex-col h-screen max-w-7xl mx-auto px-4 py-6">
+        {/* Header */}
+        <header className="flex items-center justify-between mb-6 bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/10">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate('/')}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-purple-500/20">
+                G
+              </div>
+              <div>
+                <h1 className="font-bold text-lg leading-tight">{t(lang, 'appTitle')}</h1>
+                <p className="text-xs text-gray-400">{t(lang, 'subtitle')}</p>
+              </div>
+            </div>
           </div>
-        </div>
-        <LanguageSwitcher lang={lang} onChange={onLangChange} />
-      </header>
+          <LanguageSwitcher lang={lang} onChange={onLangChange} />
+        </header>
 
-      <main className="app-grid">
-        <section className="chat-column">
-          <div className="card">
-            <div className="hero-text">
-              <h2 className="hero-title">{t(lang, 'heroTitle')}</h2>
-              <p className="hero-subtitle">{t(lang, 'heroSubtitle')}</p>
-            </div>
+        <main className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
+          {/* Chat Column */}
+          <section className="lg:col-span-2 flex flex-col gap-4 min-h-0">
+            <div className="flex-1 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6 flex flex-col overflow-hidden relative">
 
-            <div className="input-row">
-              <input
-                className="input"
-                placeholder={t(lang, 'askPlaceholder')}
-                value={question}
-                onChange={e => setQuestion(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleSend()
-                }}
-              />
-              <button
-                className={`button ${loading ? 'button-loading' : ''}`}
-                onClick={handleSend}
-                disabled={loading}
-                type="button"
-              >
-                {loading ? t(lang, 'loading') : t(lang, 'send')}
-              </button>
-            </div>
-
-            <div className="controls-row">
-              <select
-                value={collection}
-                onChange={e => setCollection(e.target.value as any)}
-                className="input"
-              >
-                <option value="demo_public">{t(lang, 'demoPublic')}</option>
-                <option value="knowledge_base_main">{t(lang, 'knowledgeBase')}</option>
-              </select>
-              {collection === 'knowledge_base_main' && (
-                <SourceFilter lang={lang} selected={sourcesFilter} onToggle={toggleSource} />
-              )}
-            </div>
-
-            <div className="samples-row">
-              <button
-                className="button secondary"
-                type="button"
-                onClick={() => setShowSamples(s => !s)}
-              >
-                {showSamples ? t(lang, 'hideSamples') : t(lang, 'showSamples')}
-              </button>
-            </div>
-
-            {showSamples && (
-              <div className="samples-panel">
-                <SampleQueries lang={lang} onRun={handleSampleRun} />
-              </div>
-            )}
-
-            {error && (
-              <div className="badge badge-error">
-                {t(lang, 'error')} : {error}
-              </div>
-            )}
-
-            <div className="messages">
-              {messages.length === 0 && (
-                <div className="meta">{t(lang, 'noMessages')}</div>
-              )}
-              {messages.map(m => (
-                <div key={m.id} className="bubble">
-                  <div className="meta" style={{ marginBottom: 6 }}>
-                    {new Date(m.createdAt).toLocaleTimeString()}
-                    {typeof m.latencyMs === 'number' ? ` • ${m.latencyMs.toFixed(0)} ms` : ''}
+              {/* Messages Area */}
+              <div className="flex-1 overflow-y-auto space-y-6 pr-2 mb-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                {messages.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 p-8">
+                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                      <Sparkles className="w-8 h-8 text-purple-400" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-white mb-2">{t(lang, 'heroTitle')}</h2>
+                    <p className="max-w-md">{t(lang, 'heroSubtitle')}</p>
                   </div>
-                  <strong>{m.question}</strong>
-                  <div className="answer">{m.answer}</div>
-                  
-                  {/* Affichage des scores */}
-                  {m.similarity_score !== undefined && m.confidence_score !== undefined && (
-                    <ScoreDisplay 
-                      similarityScore={m.similarity_score}
-                      confidenceScore={m.confidence_score}
-                    />
-                  )}
+                )}
 
-                  {m.quality_pass === false && (
-                    <div className="quality-warning">
-                      This answer could not be fully verified automatically. Please review the
-                      cited sources or contact support.
+                {messages.map(m => (
+                  <div key={m.id} className="group">
+                    <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
+                      <span>{new Date(m.createdAt).toLocaleTimeString()}</span>
+                      {typeof m.latencyMs === 'number' && <span>• {m.latencyMs.toFixed(0)} ms</span>}
                     </div>
-                  )}
-                  {m.escalate === true && (
-                    <div className="escalate-note">
-                      This question has been flagged for human review. Our team will follow up.
+
+                    <div className="bg-white/5 rounded-2xl rounded-tl-none p-4 border border-white/10 mb-2">
+                      <strong className="block text-purple-300 mb-1">User</strong>
+                      <div className="text-white/90">{m.question}</div>
                     </div>
-                  )}
-                  {m.sources?.length > 0 && (
-                    <div style={{ marginTop: 10, display: 'grid', gap: 4 }}>
-                      <div className="meta">{t(lang, 'sources')}:</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {m.sources.slice(0, 5).map(s => (
-                          <span key={s.id} className="badge" title={s.type}>
-                            {s.source} • {s.score.toFixed(3)}
-                          </span>
-                        ))}
+
+                    <div className="pl-8">
+                      <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-2xl rounded-tr-none p-4 border border-white/10">
+                        <strong className="block text-blue-300 mb-1">Assistant</strong>
+                        <div className="text-gray-200 whitespace-pre-wrap leading-relaxed">{m.answer}</div>
+
+                        {/* Scores */}
+                        {(m.similarity_score !== undefined || m.confidence_score !== undefined) && (
+                          <div className="mt-4 pt-4 border-t border-white/5">
+                            <ScoreDisplay
+                              similarityScore={m.similarity_score}
+                              confidenceScore={m.confidence_score}
+                            />
+                          </div>
+                        )}
+
+                        {/* Warnings */}
+                        {m.quality_pass === false && (
+                          <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-200">
+                            This answer could not be fully verified automatically. Please review the cited sources.
+                          </div>
+                        )}
+
+                        {/* Sources */}
+                        {m.sources?.length > 0 && (
+                          <div className="mt-4">
+                            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">{t(lang, 'sources')}</div>
+                            <div className="flex flex-wrap gap-2">
+                              {m.sources.slice(0, 5).map(s => (
+                                <span key={s.id} className="px-2 py-1 text-xs rounded-md bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-colors cursor-help" title={s.type}>
+                                  {s.source} • <span className="text-green-400">{s.score.toFixed(3)}</span>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Input Area */}
+              <div className="mt-auto space-y-4">
+                {/* Controls */}
+                <div className="flex flex-wrap gap-4 items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={collection}
+                      onChange={e => setCollection(e.target.value as any)}
+                      className="bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-300 focus:outline-none focus:border-purple-500 transition-colors"
+                    >
+                      <option value="demo_public">{t(lang, 'demoPublic')}</option>
+                      <option value="knowledge_base_main">{t(lang, 'knowledgeBase')}</option>
+                    </select>
+                    {collection === 'knowledge_base_main' && (
+                      <SourceFilter lang={lang} selected={sourcesFilter} onToggle={toggleSource} />
+                    )}
+                  </div>
+                  <button
+                    className="text-xs text-purple-400 hover:text-purple-300 transition-colors font-medium"
+                    type="button"
+                    onClick={() => setShowSamples(s => !s)}
+                  >
+                    {showSamples ? t(lang, 'hideSamples') : t(lang, 'showSamples')}
+                  </button>
                 </div>
-              ))}
+
+                {showSamples && (
+                  <div className="p-4 bg-white/5 rounded-xl border border-white/10 animate-fade-in">
+                    <SampleQueries lang={lang} onRun={handleSampleRun} />
+                  </div>
+                )}
+
+                <div className="relative">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-12 py-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all"
+                    placeholder={t(lang, 'askPlaceholder')}
+                    value={question}
+                    onChange={e => setQuestion(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleSend()
+                    }}
+                  />
+                  <button
+                    className={`absolute right-2 top-2 p-2 rounded-lg bg-purple-600 text-white hover:bg-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${loading ? 'animate-pulse' : ''}`}
+                    onClick={handleSend}
+                    disabled={loading}
+                    type="button"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {error && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-200">
+                    {t(lang, 'error')} : {error}
+                  </div>
+                )}
+              </div>
             </div>
+          </section>
 
-            <div className="footer">{t(lang, 'footer')}</div>
-          </div>
-        </section>
-
-        <aside className="insights-column">
-          <div className="card">
-            <MetricsDashboard lang={lang} messages={messages} metrics={metrics} />
-          </div>
-          <div className="card">
-            <SystemStatus lang={lang} messages={messages} metrics={metrics} />
-          </div>
-        </aside>
-      </main>
-    </div>
+          {/* Sidebar */}
+          <aside className="space-y-6 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10">
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
+              <MetricsDashboard lang={lang} messages={messages} metrics={metrics} />
+            </div>
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
+              <SystemStatus lang={lang} messages={messages} metrics={metrics} />
+            </div>
+            <div className="text-center text-xs text-gray-600 mt-8">
+              {t(lang, 'footer')}
+            </div>
+          </aside>
+        </main>
+      </div>
+    </Layout>
   )
 }
