@@ -1,8 +1,9 @@
-# main.py (extrait corrigé)
+# main.py (optimisé pour RAM limitée)
 from fastapi import FastAPI
-from router import ingestion, retriever, chatbot
+from router import chatbot
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import gc
 
 app = FastAPI(
     title="GenAI Workflow Automate API",
@@ -33,15 +34,33 @@ app.add_middleware(
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    """Endpoint léger pour vérifier que l'API est vivante.
-
-    Utilisé par le frontend (mode production) pour pinger régulièrement
-    le backend Render et limiter les cold starts.
-    """
+    """Endpoint léger pour vérifier que l'API est vivante."""
     return {"status": "ok"}
 
 
+@app.get("/health/memory", tags=["Health"])
+async def memory_check():
+    """Endpoint pour monitorer l'utilisation mémoire (debug OOM)."""
+    import sys
+    
+    # Forcer le garbage collection
+    gc.collect()
+    
+    memory_info = {
+        "status": "ok",
+        "python_version": sys.version,
+    }
+    
+    # Essayer d'obtenir les infos mémoire
+    try:
+        import resource
+        usage = resource.getrusage(resource.RUSAGE_SELF)
+        memory_info["memory_mb"] = round(usage.ru_maxrss / 1024, 2)  # Linux: KB -> MB
+    except ImportError:
+        pass
+    
+    return memory_info
+
+
 # Include routers
-# app.include_router(ingestion.router)
-# app.include_router(retriever.router)
 app.include_router(chatbot.router)

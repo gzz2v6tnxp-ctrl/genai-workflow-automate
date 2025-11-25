@@ -12,7 +12,19 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
-from agents.graph import app as rag_app  # workflow compilé
+# LAZY LOADING: Le workflow RAG est chargé uniquement à la première requête
+# Cela économise ~200-300 Mo de RAM au démarrage
+_rag_app = None
+
+def get_rag_app():
+    """Charge le workflow RAG de manière lazy (à la demande)."""
+    global _rag_app
+    if _rag_app is None:
+        print("[LazyLoader] Chargement du workflow RAG...")
+        from agents.graph import app
+        _rag_app = app
+        print("[LazyLoader] Workflow RAG chargé.")
+    return _rag_app
 
 # Cache Redis (optionnel) avec fallback local en mémoire
 try:
@@ -129,12 +141,13 @@ async def query_chatbot(payload: ChatQuery):
             except Exception:
                 pass
 
-        # Collect outputs from the RAG workflow
+        # Collect outputs from the RAG workflow (LAZY LOADED)
         last_generate = None
         last_fallback = None
         last_evaluate = None
         last_human = None
 
+        rag_app = get_rag_app()  # Charge le workflow à la première requête
         for output in rag_app.stream({
             "question": payload.question,
             "collection": payload.collection,

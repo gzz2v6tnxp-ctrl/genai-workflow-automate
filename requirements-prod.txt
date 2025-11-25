@@ -1,0 +1,25 @@
+# ===== Production Requirements (Optimized for Low RAM) =====
+# Target: Render Free Tier (512 Mo RAM)
+
+# Web/API - Core
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+
+# Vector database
+qdrant-client==1.15.0
+
+# OpenAI (lightweight - NO local models)
+openai>=1.0.0
+
+# LangChain - Minimal imports
+langchain-core>=0.1.0
+langchain-openai>=0.0.5
+langgraph>=0.0.20
+
+# Utilities - Lightweight
+python-dotenv>=1.0.0
+httpx>=0.25.0
+langdetect>=1.0.9
+
+# Note: NO sentence-transformers, transformers, pandas, gradio
+# These save ~800MB+ RAM

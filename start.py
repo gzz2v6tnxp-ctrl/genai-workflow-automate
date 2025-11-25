@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-Script de démarrage robuste pour le backend GenAI Workflow.
-Effectue des vérifications avant de lancer le serveur.
+Script de démarrage optimisé pour RAM limitée (Render Free Tier).
+Lance Uvicorn avec des paramètres adaptés à 512 Mo RAM.
 """
 
 import os
 import sys
-import subprocess
-from pathlib import Path
+import gc
 
 def check_environment():
     """Vérifier l'environnement et les variables requises."""
-    print("=== Diagnostic de démarrage ===")
+    print("=== Diagnostic de démarrage (Low RAM Mode) ===")
     print(f"Python version: {sys.version}")
     print(f"Working directory: {os.getcwd()}")
     print(f"PORT: {os.getenv('PORT', 'not set (will use 8000)')}")
@@ -31,12 +30,10 @@ def check_environment():
             print(f"{var}: NOT SET - service might not work fully")
 
 def test_imports():
-    """Tester les imports critiques."""
-    print("\n=== Test des imports ===")
+    """Tester les imports critiques SANS charger les modules lourds."""
+    print("\n=== Test des imports (mode léger) ===")
     try:
-        import main
-        print("✓ main.py import successful")
-        
+        # Ne PAS importer agents.graph ici - c'est le lazy loading
         import fastapi
         print("✓ FastAPI available")
         
@@ -46,26 +43,35 @@ def test_imports():
         import openai
         print("✓ OpenAI client available")
         
+        # Forcer le garbage collection
+        gc.collect()
+        
         return True
     except Exception as e:
         print(f"✗ Import error: {e}")
         return False
 
 def start_server():
-    """Démarrer le serveur uvicorn."""
-    port = os.getenv('PORT', '8000')
-    print(f"\n=== Démarrage du serveur sur le port {port} ===")
+    """Démarrer le serveur uvicorn avec paramètres optimisés RAM."""
+    import uvicorn
     
-    cmd = [
-        'uvicorn', 
-        'main:app', 
-        '--host', '0.0.0.0', 
-        '--port', port,
-        '--log-level', 'info'
-    ]
+    port = int(os.getenv('PORT', '8000'))
+    print(f"\n=== Démarrage du serveur sur le port {port} (Low RAM Mode) ===")
     
-    print(f"Commande: {' '.join(cmd)}")
-    subprocess.run(cmd)
+    # Configuration optimisée pour Render Free Tier (512 Mo RAM)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=port,
+        workers=1,  # IMPORTANT: 1 seul worker pour économiser la RAM
+        loop="uvloop" if sys.platform != "win32" else "asyncio",
+        http="httptools" if sys.platform != "win32" else "h11",
+        log_level="info",
+        access_log=False,  # Désactiver les logs d'accès pour économiser RAM
+        limit_concurrency=10,  # Limiter les connexions simultanées
+        limit_max_requests=1000,  # Recycler le worker après N requêtes
+        timeout_keep_alive=30,  # Réduire le timeout
+    )
 
 if __name__ == "__main__":
     check_environment()

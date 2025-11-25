@@ -155,7 +155,7 @@ def retrieve_documents(state):
         results = retriever.retrieve(
             query=question,
             top_k=5,
-            score_threshold=0.5,
+            score_threshold=0.35,
             filters=filters
         )
 
