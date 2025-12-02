@@ -17,6 +17,14 @@ console.log('API Configuration:', {
   finalAPIBase: API_BASE
 })
 
+export interface VerificationInfo {
+  claim: string
+  is_verified: boolean
+  confidence: number
+  evidence?: string | null
+  correction?: string | null
+}
+
 export interface ChatMessage {
   id: string
   question: string
@@ -41,6 +49,12 @@ export interface ChatMessage {
   sourcesFilter?: string[] | null
   latencyMs?: number | null
   createdAt: number
+  // COV-RAG specific fields
+  cove_enabled?: boolean
+  hallucination_detected?: boolean
+  corrections_made?: number
+  verifications?: VerificationInfo[]
+  initial_answer?: string | null
 }
 
 interface SendOptions {
@@ -130,7 +144,13 @@ export function useChat(lang: Lang) {
         collection: opts.collection,
         sourcesFilter: opts.sourcesFilter,
         latencyMs: latency,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        // COV-RAG fields
+        cove_enabled: data.cove_enabled ?? false,
+        hallucination_detected: data.hallucination_detected ?? null,
+        corrections_made: data.corrections_made ?? 0,
+        verifications: data.verifications ?? null,
+        initial_answer: data.initial_answer ?? null
       }
       setMessages(m => [msg, ...m])
       setLastLatencyMs(latency)

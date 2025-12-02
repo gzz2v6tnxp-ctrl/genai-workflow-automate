@@ -7,6 +7,8 @@ import { SampleQueries } from './SampleQueries'
 import { MetricsDashboard } from './MetricsDashboard'
 import { SystemStatus } from './SystemStatus'
 import { ScoreDisplay } from './ScoreDisplay'
+import { COVEMetrics } from './COVEMetrics'
+import { AdvancedMetricsPanel } from './AdvancedMetricsPanel'
 import { Layout } from './Layout'
 import { ArrowLeft, Send, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -145,6 +147,16 @@ export const ChatPanel: React.FC<Props> = ({ lang, onLangChange }) => {
                             </div>
                           </div>
                         )}
+
+                        {/* COV-RAG Metrics */}
+                        <COVEMetrics
+                          coveEnabled={m.cove_enabled}
+                          hallucinationDetected={m.hallucination_detected}
+                          correctionsMode={m.corrections_made}
+                          verifications={m.verifications}
+                          initialAnswer={m.initial_answer}
+                          lang={lang}
+                        />
                       </div>
                     </div>
                   </div>
@@ -214,6 +226,9 @@ export const ChatPanel: React.FC<Props> = ({ lang, onLangChange }) => {
 
           {/* Sidebar */}
           <aside className="space-y-6 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10">
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
+              <AdvancedMetricsPanel messages={messages} lang={lang} />
+            </div>
             <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
               <MetricsDashboard lang={lang} messages={messages} metrics={metrics} />
             </div>

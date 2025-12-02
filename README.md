@@ -1,10 +1,11 @@
 # 🚀 GenAI Workflow Automate
 
-Une **pipeline RAG (Retrieval-Augmented Generation) robuste** avec qualité d'évaluation, escalade humaine et déploiement hybride (Frontend GitHub Pages + Backend Railway).
+Une **pipeline RAG (Retrieval-Augmented Generation) robuste** avec **COV-RAG** (Chain-of-Verification) pour minimiser les hallucinations, qualité d'évaluation, escalade humaine et déploiement hybride.
 
 **Stack technique** :
-- 🧠 **LLM** : OpenAI ChatGPT (3.5-turbo)
-- 🔍 **Retrieval** : Qdrant Cloud (vecteur DB)
+- 🧠 **LLM** : OpenAI ChatGPT (gpt-3.5-turbo / gpt-4)
+- 🔍 **Retrieval** : Qdrant Cloud (vecteur DB) + Récupération hybride
+- 🛡️ **Anti-Hallucination** : Chain-of-Verification (CoVE)
 - 📊 **Orchestration** : LangGraph (agentic workflows)
 - ⚡ **Backend** : FastAPI (Python)
 - 🎨 **Frontend** : React + Vite + TypeScript
@@ -12,15 +13,48 @@ Une **pipeline RAG (Retrieval-Augmented Generation) robuste** avec qualité d'é
 
 ---
 
+## 🆕 Nouveautés: COV-RAG avec Chain-of-Verification
+
+### Qu'est-ce que COV-RAG?
+
+COV-RAG est une architecture RAG avancée qui intègre **Chain-of-Verification (CoVE)** pour détecter et corriger automatiquement les hallucinations du LLM. https://arxiv.org/pdf/2410.05801 
+
+**Pipeline COV-RAG:**
+```
+Question → Récupération Hybride → Re-ranking → Génération Initiale
+                                                       ↓
+                                            Extraction des Affirmations
+                                                       ↓
+                                            Vérification vs Sources
+                                                       ↓
+                                            Correction si Hallucination
+                                                       ↓
+                                            Réponse Finale + Score Confiance
+```
+
+### Techniques Anti-Hallucination
+
+| Technique | Description | Impact |
+|-----------|-------------|--------|
+| **Récupération Hybride** | Dense (embedding) + MMR (diversité) | Meilleure couverture |
+| **Re-ranking** | 70% sémantique + 30% lexical | Documents plus pertinents |
+| **Ancrage Strict** | Citation obligatoire des sources `[ID]` | Traçabilité |
+| **CoVE** | Vérification des affirmations vs sources | Détection hallucinations |
+| **Correction Auto** | Réécriture des parties incorrectes | Réponses fiables |
+| **Score de Confiance** | Combinaison similarité + vérification | Transparence |
+
+---
+
 ## 📋 Quick Links
 
 1. [Installation locale](#installation-locale)
 2. [Configuration](#configuration)
-3. [Développement](#développement)
-4. [Déploiement hybride](#déploiement-hybride)
-5. [API Endpoints](#api-endpoints)
-6. [Observabilité](#observabilité)
-7. [Troubleshooting](#troubleshooting)
+3. [COV-RAG: Anti-Hallucination](#cov-rag-anti-hallucination)
+4. [Développement](#développement)
+5. [Déploiement hybride](#déploiement-hybride)
+6. [API Endpoints](#api-endpoints)
+7. [Observabilité](#observabilité)
+8. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -124,6 +158,151 @@ Loader auto : `agents.graph.load_prompts()`.
 
 ---
 
+## 🛡️ COV-RAG: Anti-Hallucination
+
+### Architecture des Modules
+
+```
+agents/
+├── cov_rag.py           # Classes principales COV-RAG
+│   ├── COVRAGRetriever  # Récupération hybride + re-ranking
+│   ├── ChainOfVerification  # Pipeline CoVE
+│   └── COVRAGAgent      # Agent intégré
+├── cov_rag_graph.py     # Workflow LangGraph COV-RAG
+│   ├── retrieve_with_rerank
+│   ├── generate_initial
+│   ├── extract_claims
+│   ├── verify_claims
+│   ├── correct_if_needed
+│   └── evaluate_final
+└── state.py             # États du graphe
+```
+
+### Utilisation via l'API
+
+**Avec CoVE (défaut - recommandé):**
+```bash
+curl -X POST "http://localhost:8000/api/v1/chatbot/query" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "Ma carte bancaire est bloquée, que faire?",
+    "collection": "demo_public",
+    "enable_cove": true
+  }'
+```
+
+**Sans CoVE (plus rapide):**
+```bash
+curl -X POST "http://localhost:8000/api/v1/chatbot/query" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "Ma carte bancaire est bloquée, que faire?",
+    "enable_cove": false
+  }'
+```
+
+### Utilisation Programmatique
+
+```python
+# Méthode 1: API Simple (sync)
+from agents import run_cov_rag
+
+result = run_cov_rag(
+    question="Ma carte bancaire est bloquée",
+    collection="demo_public",
+    enable_cove=True
+)
+
+print(f"Réponse: {result['answer']}")
+print(f"Confiance: {result['confidence']:.0%}")
+print(f"Hallucination détectée: {result['hallucination_detected']}")
+print(f"Corrections appliquées: {result['corrections_made']}")
+
+# Méthode 2: Agent Async
+import asyncio
+from agents import create_cov_rag_agent
+
+async def main():
+    agent = create_cov_rag_agent(enable_cove=True)
+    result = await agent.answer("Ma carte est bloquée")
+    
+    print(f"Réponse: {result.answer}")
+    print(f"Score: {result.confidence_score:.0%}")
+    
+    # Vérifications détaillées
+    for v in result.verifications:
+        status = "✅" if v.is_verified else "❌"
+        print(f"{status} {v.original_claim[:50]}...")
+
+asyncio.run(main())
+```
+
+### Pipeline CoVE Détaillé
+
+#### Étape 1: Extraction des Affirmations
+```python
+# Le LLM extrait les faits vérifiables
+affirmations = [
+    {"fact": "La carte peut être débloquée en 24h", "category": "temporal"},
+    {"fact": "Le numéro d'urgence est le 0800 123 456", "category": "numerical"},
+]
+```
+
+#### Étape 2: Génération des Questions de Vérification
+```python
+questions = [
+    {"question": "Quel est le délai de déblocage d'une carte?", "fact": "..."},
+    {"question": "Quel est le numéro d'urgence?", "fact": "..."},
+]
+```
+
+#### Étape 3: Vérification contre les Sources
+```python
+# Chaque affirmation est vérifiée
+verification = {
+    "is_verified": False,  # Non trouvé dans les sources
+    "confidence": 0.3,
+    "evidence": "Aucune mention du délai de 24h dans les documents",
+    "correction": "Le délai dépend du type de blocage"
+}
+```
+
+#### Étape 4: Correction Automatique
+```python
+# La réponse est corrigée automatiquement
+original = "Votre carte sera débloquée en 24h..."
+corrected = "Le délai de déblocage dépend du type de blocage..."
+```
+
+### Métriques COV-RAG
+
+Les métriques sont enregistrées dans `logs/cov_rag_metrics.jsonl`:
+
+```json
+{
+  "timestamp": "2025-12-02T10:30:00Z",
+  "question": "Ma carte est bloquée",
+  "similarity_score": 0.85,
+  "cove_confidence": 0.9,
+  "final_confidence": 0.87,
+  "hallucination_detected": false,
+  "corrections_made": 0,
+  "num_verifications": 3,
+  "quality_pass": true
+}
+```
+
+### Seuils de Qualité
+
+| Métrique | Seuil | Action |
+|----------|-------|--------|
+| `final_confidence >= 0.4` | ✅ Pass | Réponse retournée |
+| `final_confidence < 0.4` | ⚠️ Warning | Badge UI + log |
+| `final_confidence < 0.3` | 🚨 Escalate | Revue humaine |
+| `hallucination_detected` | 🔄 Correct | Correction auto |
+
+---
+
 ## 🛠️ Développement
 
 ### Structure
@@ -131,11 +310,13 @@ Loader auto : `agents.graph.load_prompts()`.
 ```
 genai-workflow-automate/
 ├── agents/
-│   ├── graph.py              # StateGraph principal
-│   ├── state.py              # TypedDict + types
+│   ├── graph.py              # StateGraph RAG standard
+│   ├── cov_rag.py            # 🆕 COV-RAG: Retriever + CoVE + Agent
+│   ├── cov_rag_graph.py      # 🆕 Workflow LangGraph COV-RAG
+│   ├── state.py              # TypedDict + COVRAGGraphState
 │   └── prompts.md            # Prompts Markdown
 ├── router/
-│   ├── chatbot.py            # POST /api/v1/chatbot/query
+│   ├── chatbot.py            # POST /api/v1/chatbot/query (COV-RAG + Standard)
 │   ├── retriever.py
 │   └── ingestion.py
 ├── frontend/
@@ -146,7 +327,8 @@ genai-workflow-automate/
 │   └── vite.config.ts
 ├── logs/
 │   ├── llm_responses.jsonl   # LLM output + citations
-│   └── metrics.jsonl         # Quality metrics
+│   ├── metrics.jsonl         # Quality metrics (standard)
+│   └── cov_rag_metrics.jsonl # 🆕 COV-RAG metrics
 ├── main.py                   # FastAPI entry
 ├── Dockerfile                # Backend
 ├── docker-compose.yml        # Local compose
@@ -154,7 +336,28 @@ genai-workflow-automate/
 └── README.md
 ```
 
-### Workflow LangGraph
+### Workflow LangGraph - COV-RAG
+
+```
+Input: question, collection, sources_filter, enable_cove
+  ↓
+[retrieve_with_rerank] → Qdrant (hybrid + rerank)
+  ↓
+[generate_initial] → LLM generation + ancrage strict
+  ↓ (si enable_cove=true)
+[extract_claims] → Extraction affirmations vérifiables
+  ↓
+[verify_claims] → Vérification vs sources (CoVE)
+  ↓
+[correct_if_needed] → Correction hallucinations
+  ↓
+[evaluate_final] → Quality gate final
+  ├─ quality_pass=true → END (return)
+  ├─ escalate=true → [human_review]
+  └─ else → END (avec warning)
+```
+
+### Workflow LangGraph - Standard (sans CoVE)
 
 ```
 Input: question, collection, sources_filter
@@ -173,10 +376,13 @@ Input: question, collection, sources_filter
 
 ### Nodes
 
-- **retrieve** : Semantic search + filter by source
-- **grade** : Score documents (relevant/not_relevant)
-- **generate** : LLM + citation anchoring
-- **evaluate** : Quality gate (confidence, hallucination, cites_ok)
+- **retrieve** / **retrieve_with_rerank** : Semantic search + filter + rerank
+- **grade** : Score documents (relevant/marginal/not_relevant)
+- **generate** / **generate_initial** : LLM + citation anchoring
+- **extract_claims** : 🆕 Extraction affirmations (CoVE)
+- **verify_claims** : 🆕 Vérification vs sources (CoVE)
+- **correct_if_needed** : 🆕 Correction automatique (CoVE)
+- **evaluate** / **evaluate_final** : Quality gate (confidence, hallucination)
 - **human_review** : Escalation message
 - **fallback** : Generic fallback response
 
@@ -297,17 +503,29 @@ git push origin main
   "question": "What is Enron's revenue?",
   "collection": "knowledge_base_main",
   "sources_filter": ["enron"],
-  "output_format": "text"
+  "output_format": "text",
+  "enable_cove": true
 }
 ```
 
-**Response** :
+**Paramètres:**
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `question` | string | **requis** | Question utilisateur |
+| `collection` | string | `demo_public` | Collection Qdrant |
+| `sources_filter` | string[] | `null` | Filtrer: `synth`, `cfpb`, `enron` |
+| `output_format` | string | `text` | Format: `text` ou `json` |
+| `enable_cove` | bool | `true` | 🆕 Activer Chain-of-Verification |
+
+**Response (avec CoVE)** :
 ```json
 {
   "question": "What is Enron's revenue?",
-  "answer": "Based on available documents...",
+  "answer": "Based on available documents [doc-123]...",
   "language": "en",
-  "confidence": 0.82,
+  "similarity_score": 0.91,
+  "confidence_score": 0.85,
   "sources": [
     {
       "id": "doc-123",
@@ -317,19 +535,65 @@ git push origin main
       "type": "email"
     }
   ],
-  "mode": "generate",
+  "mode": "cov_rag",
   "quality_pass": true,
   "escalate": false,
-  "cites_ok": true
+  "cites_ok": true,
+  "cove_enabled": true,
+  "hallucination_detected": false,
+  "corrections_made": 0,
+  "verifications": [
+    {
+      "claim": "Revenue was $100 billion",
+      "is_verified": true,
+      "confidence": 0.95,
+      "evidence": "Document states: 'Revenue reached $100.8 billion'",
+      "correction": null
+    }
+  ],
+  "initial_answer": null
 }
+```
+
+**Response (avec corrections)** :
+```json
+{
+  "answer": "Le délai dépend du type de blocage...",
+  "hallucination_detected": true,
+  "corrections_made": 1,
+  "verifications": [
+    {
+      "claim": "La carte sera débloquée en 24h",
+      "is_verified": false,
+      "confidence": 0.3,
+      "evidence": "Aucune mention du délai dans les sources",
+      "correction": "Le délai dépend du type de blocage"
+    }
+  ],
+  "initial_answer": "Votre carte sera débloquée en 24h..."
+}
+```
 ```
 
 ### Quality Gate Thresholds
 
-- `confidence >= 0.35` → `quality_pass = true`
-- `confidence < 0.25` → `escalate = true`
-- `hallucination == true` → `escalate = true`
-- `cites_ok == false` → warning badge (frontend)
+| Métrique | Seuil | Résultat |
+|----------|-------|----------|
+| `confidence >= 0.40` | ✅ | `quality_pass = true` |
+| `confidence < 0.40` | ⚠️ | `quality_pass = false` |
+| `confidence < 0.30` | 🚨 | `escalate = true` |
+| `hallucination_detected` | 🔄 | Correction automatique (CoVE) |
+| `cites_ok == false` | ⚠️ | Warning badge (frontend) |
+
+### Modes de Réponse
+
+| Mode | Description | CoVE |
+|------|-------------|------|
+| `cov_rag` | COV-RAG avec vérification réussie | ✅ |
+| `cov_rag_fallback` | COV-RAG avec confiance faible | ✅ |
+| `generate` | RAG standard | ❌ |
+| `fallback` | Réponse générique | ❌ |
+| `human_review` | Escalade humaine | ✅/❌ |
 
 ---
 
@@ -340,7 +604,7 @@ git push origin main
 #### `logs/llm_responses.jsonl`
 ```json
 {
-  "timestamp": "2025-11-13T10:30:00Z",
+  "timestamp": "2025-12-02T10:30:00Z",
   "question": "What is revenue?",
   "generation": "Based on...",
   "detected_ids": ["doc-123", "doc-456"],
@@ -348,9 +612,10 @@ git push origin main
 }
 ```
 
-#### `logs/metrics.jsonl`
+#### `logs/metrics.jsonl` (RAG Standard)
 ```json
 {
+  "timestamp": "2025-12-02T10:30:00Z",
   "avg_score": 0.89,
   "confidence": 0.82,
   "cites_ok": true,
@@ -358,6 +623,24 @@ git push origin main
   "hallucination": false,
   "quality_pass": true,
   "escalate": false
+}
+```
+
+#### `logs/cov_rag_metrics.jsonl` (COV-RAG) 🆕
+```json
+{
+  "timestamp": "2025-12-02T10:30:00Z",
+  "question": "Ma carte est bloquée",
+  "similarity_score": 0.85,
+  "cove_confidence": 0.9,
+  "final_confidence": 0.87,
+  "cites_ok": true,
+  "hallucination_detected": false,
+  "quality_pass": true,
+  "escalate": false,
+  "corrections_made": 0,
+  "num_sources": 5,
+  "num_verifications": 3
 }
 ```
 
@@ -400,9 +683,33 @@ curl -X GET "https://your-qdrant-url/collections/knowledge_base_main" \
 
 ### ❌ LLM hallucination (quality_pass=false)
 
+**Avec COV-RAG (recommandé):**
+1. Activer CoVE: `enable_cove: true` dans la requête
+2. Les hallucinations sont automatiquement détectées et corrigées
+3. Vérifier `verifications` dans la réponse pour les détails
+
+**Sans COV-RAG:**
 1. ↓ Temperature : `0.2 → 0.1`
 2. Améliorer prompts dans `agents/prompts.md`
 3. Vérifier retrieval pertinent
+
+### ❌ COV-RAG lent
+
+**Cause**: Pipeline CoVE ajoute ~2-3 appels LLM supplémentaires
+
+**Solutions**:
+1. Utiliser `enable_cove: false` pour les requêtes simples
+2. Réduire `max_claims_to_verify` dans la config (défaut: 5)
+3. Utiliser un modèle plus rapide (gpt-3.5-turbo vs gpt-4)
+
+### ❌ Trop de corrections CoVE
+
+**Cause**: Le LLM génère des affirmations non présentes dans les sources
+
+**Solutions**:
+1. Améliorer le prompt d'ancrage dans `agents/cov_rag.py`
+2. Augmenter `top_k` pour récupérer plus de documents
+3. Baisser `score_threshold` pour inclure plus de sources
 
 ---
 
@@ -413,6 +720,7 @@ curl -X GET "https://your-qdrant-url/collections/knowledge_base_main" \
 - [Railway Docs](https://docs.railway.app/)
 - [FastAPI Docs](https://fastapi.tiangolo.com/)
 - [Vite Docs](https://vitejs.dev/)
+- [Chain-of-Verification Paper](https://arxiv.org/abs/2309.11495) - Référence CoVE
 
 ---
 
@@ -424,10 +732,20 @@ MIT
 
 ## 👤 Author
 
-**GenAI Workflow Automate** - RAG pipeline for customer support automation
+**GenAI Workflow Automate** - RAG pipeline with COV-RAG for low-hallucination customer support automation
 
 - **Demo** : https://gzz2v6tnxp-ctrl.github.io/genai-workflow-automate/
 - **Backend** : https://backend-xxx.up.railway.app/ (après déploiement)
+
+### Fonctionnalités Principales
+
+✅ **Retrieval-Augmented Generation (RAG)**
+✅ **Chain-of-Verification (CoVE)** - Anti-hallucination
+✅ **Récupération Hybride** - Dense + MMR
+✅ **Re-ranking** - Pertinence optimisée
+✅ **Multi-langue** - FR/EN auto-détecté
+✅ **Escalade Humaine** - Confiance faible
+✅ **Observabilité** - Métriques + Logs
 
 ---
 
