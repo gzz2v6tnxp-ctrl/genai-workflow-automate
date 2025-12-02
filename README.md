@@ -749,6 +749,61 @@ MIT
 
 ---
 
+## 🎨 Frontend Moderne v2.0
+
+### Interface Utilisateur Améliorée
+
+Le frontend a été entièrement repensé avec un **design moderne et intuitif** pour afficher toutes les métriques COV-RAG en temps réel :
+
+#### ✨ Nouveaux Composants
+
+1. **COVEMetrics** - Affichage des vérifications claim-by-claim
+   - Badge CoVE actif avec gradient violet/bleu
+   - Détection d'hallucinations avec compteur de corrections
+   - Liste détaillée des vérifications (claim, confiance, evidence)
+   - Comparaison avant/après correction (section pliable)
+
+2. **AdvancedMetricsPanel** - Métriques avancées avec visualisations
+   - Grille 2x2 : Confiance, Latence, Qualité, Hallucinations
+   - Tendances avec indicateurs (↑↓)
+   - Métriques secondaires : citations, sources/requête, scores
+
+#### 🎯 Composants Refactorisés
+
+- **SystemStatus** : Design moderne avec Tailwind CSS, espacements optimisés
+- **MetricsDashboard** : Cartes avec gradients colorés, séparateurs visuels nets
+- **ChatPanel** : Intégration complète des métriques COV-RAG
+
+#### 📊 Corrections d'Espacement
+
+**Avant** :
+```
+Erreurs1          ❌ Texte collé
+Qualité0 0%       ❌ Illisible
+```
+
+**Après** :
+```
+Erreurs        1       ✅ Espacé
+Qualité        0 (0%)  ✅ Lisible
+```
+
+**Guide complet** : Voir [`frontend/VISUAL_GUIDE.md`](frontend/VISUAL_GUIDE.md) et [`frontend/FRONTEND_UPDATES.md`](frontend/FRONTEND_UPDATES.md)
+
+#### 🚀 Démarrage Rapide
+
+```bash
+# Windows
+start-frontend.bat
+
+# Linux/Mac
+cd frontend && npm install && npm run dev
+```
+
+Interface disponible sur : **http://localhost:5173**
+
+---
+
 ## 🤝 Contributions
 
 ```bash
